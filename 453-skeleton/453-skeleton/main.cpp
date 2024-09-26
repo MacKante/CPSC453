@@ -59,15 +59,31 @@ int main() {
 	CPU_Geometry cpuGeom;
 	GPU_Geometry gpuGeom;
 
-	// vertices
-	cpuGeom.verts.push_back(glm::vec3(-0.5f, -0.5f, 0.f));
-	cpuGeom.verts.push_back(glm::vec3(0.5f, -0.5f, 0.f));
-	cpuGeom.verts.push_back(glm::vec3(0.f, 0.5f, 0.f));
+	// Define the vertices of the Sierpinski triangle
+	cpuGeom.verts.push_back(glm::vec3(-0.5f, -0.5f, 0.f)); // v1
+	cpuGeom.verts.push_back(glm::vec3(0.f, -0.5f, 0.f));   // v2
+	cpuGeom.verts.push_back(glm::vec3(-0.25f, 0.f, 0.f));  // v3
 
-	// colours (these should be in linear space)
-	cpuGeom.cols.push_back(glm::vec3(1.f, 0.f, 0.f));
-	cpuGeom.cols.push_back(glm::vec3(0.f, 1.f, 0.f));
-	cpuGeom.cols.push_back(glm::vec3(0.f, 0.f, 1.f));
+	cpuGeom.verts.push_back(glm::vec3(0.f, -0.5f, 0.f));   // v4
+	cpuGeom.verts.push_back(glm::vec3(0.5f, -0.5f, 0.f));  // v5
+	cpuGeom.verts.push_back(glm::vec3(0.25f, 0.f, 0.f));   // v6
+
+	cpuGeom.verts.push_back(glm::vec3(-0.25f, 0.f, 0.f));  // v7 (repeat to match triangles)
+	cpuGeom.verts.push_back(glm::vec3(0.25f, 0.f, 0.f));   // v8
+	cpuGeom.verts.push_back(glm::vec3(0.f, 0.5f, 0.f));    // v9
+
+	// Define corresponding colors for each vertex
+	cpuGeom.cols.push_back(glm::vec3(1.f, 0.f, 0.f));  // Red for v1
+	cpuGeom.cols.push_back(glm::vec3(1.f, 0.f, 0.f));  // Red for v2
+	cpuGeom.cols.push_back(glm::vec3(1.f, 0.f, 0.f));  // Red for v3
+
+	cpuGeom.cols.push_back(glm::vec3(0.f, 1.f, 0.f));  // Green for v4
+	cpuGeom.cols.push_back(glm::vec3(0.f, 1.f, 0.f));  // Green for v5
+	cpuGeom.cols.push_back(glm::vec3(0.f, 1.f, 0.f));  // Green for v6
+
+	cpuGeom.cols.push_back(glm::vec3(0.f, 0.f, 1.f));  // Blue for v7
+	cpuGeom.cols.push_back(glm::vec3(0.f, 0.f, 1.f));  // Blue for v8
+	cpuGeom.cols.push_back(glm::vec3(0.f, 0.f, 1.f));  // Blue for v9
 
 	gpuGeom.setVerts(cpuGeom.verts);
 	gpuGeom.setCols(cpuGeom.cols);
@@ -81,7 +97,7 @@ int main() {
 
 		glEnable(GL_FRAMEBUFFER_SRGB);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawArrays(GL_TRIANGLES, 0, 9);
 		glDisable(GL_FRAMEBUFFER_SRGB); // disable sRGB for things like imgui
 
 		window.swapBuffers();
