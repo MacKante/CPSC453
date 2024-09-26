@@ -102,7 +102,7 @@ foreach(file ${files})
 	configure_file(${file} shaders/${name})
 endforeach()
 
-add_executable(${APP_NAME} ${SOURCES})
+add_executable(${APP_NAME} ${SOURCES}   )
 target_include_directories(${APP_NAME} PRIVATE ${INCLUDES})
 target_link_libraries(${APP_NAME} ${LIBRARIES})
 target_compile_definitions(${APP_NAME} PRIVATE ${DEFINITIONS})

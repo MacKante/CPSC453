@@ -11,10 +11,13 @@
 #include "Window.h"
 
 
+// Function Definitions
+void sierpinskiTriangle(glm::vec3 a, glm::vec3 b, glm::vec3 c, int m);
+
 // EXAMPLE CALLBACKS
 class MyCallbacks : public CallbackInterface {
 
-public:
+////////public:
 	MyCallbacks(ShaderProgram& shader) : shader(shader) {}
 
 	virtual void keyCallback(int key, int scancode, int action, int mods) {
@@ -58,6 +61,10 @@ int main() {
 	// GEOMETRY
 	CPU_Geometry cpuGeom;
 	GPU_Geometry gpuGeom;
+
+	glm::vec3 v0(-0.5f, -0.5f, 0.f);	// V0
+	glm::vec3 v1(0.5f, -0.5f, 0.f);		// V1
+	glm::vec3 v2(0.f, 0.5f, 0.f);		// V2
 
 	// Define the vertices of the Sierpinski triangle
 	cpuGeom.verts.push_back(glm::vec3(-0.5f, -0.5f, 0.f)); // v1
@@ -105,4 +112,15 @@ int main() {
 
 	glfwTerminate();
 	return 0;
+}
+
+
+void sierpinskiTriangle(glm::vec3 a, glm::vec3 b, glm::vec3 c, int m) {
+
+	glm::vec3 a0 = a, a1 = ((a + b) / 2.f), a2 = ((a + c) / 2.f);
+	glm::vec3 b0 = ((a + b) / 2.f), b1 = b, b2 = ((b + c) / 2.f);
+	glm::vec3 c0 = ((a + c) / 2.f), c1 = ((b + c) / 2.f), c2 = c;
+
+	// do the pushbackssss hereeee
+	
 }
