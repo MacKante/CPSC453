@@ -11,6 +11,7 @@
 #include "Window.h"
 
 #include "SierpinskiTriangle.h"
+#include "KochSnowflake.h"
 
 
 // EXAMPLE CALLBACKS
@@ -68,22 +69,31 @@ int main() {
 	//CPU_Geometry cpuGeom = sierpinski.getCPUGeometry();
 	//GPU_Geometry gpuGeom;
 
-	CPU_Geometry cpuGeom;
+	//CPU_Geometry cpuGeom;
+	//GPU_Geometry gpuGeom;
+
+	//cpuGeom.verts.push_back(v0);
+	//cpuGeom.verts.push_back(v1);
+	//cpuGeom.verts.push_back(v1);
+	//cpuGeom.verts.push_back(v2);
+	//cpuGeom.verts.push_back(v2);
+	//cpuGeom.verts.push_back(v0);
+
+	//cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
+	//cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
+	//cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
+	//cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
+	//cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
+	//cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
+
+
+	// Koch Snowflake
+	KochSnowflake koch = KochSnowflake(1);
+	koch.draw_koch_snowflake();
+
+	// GEOMETRY
+	CPU_Geometry cpuGeom = koch.getCPUGeometry();
 	GPU_Geometry gpuGeom;
-
-	cpuGeom.verts.push_back(v0);
-	cpuGeom.verts.push_back(v1);
-	cpuGeom.verts.push_back(v1);
-	cpuGeom.verts.push_back(v2);
-	cpuGeom.verts.push_back(v2);
-	cpuGeom.verts.push_back(v0);
-
-	cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
-	cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
-	cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
-	cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
-	cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
-	cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
 
 	gpuGeom.setVerts(cpuGeom.verts);
 	gpuGeom.setCols(cpuGeom.cols);

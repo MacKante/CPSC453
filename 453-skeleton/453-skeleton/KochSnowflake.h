@@ -19,9 +19,9 @@ public:
 	// Draw the Sierpinski Triangle
 	void draw_koch_snowflake();
 
-	// Making hyrule triangles
-	void generate_koch_vertices(glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, int depth);
-	void generate_koch_colors(int depth);
+	// Making lines
+	void generate_koch_vertices(glm::vec3 p0, glm::vec3 p1, int depth);
+	// void generate_koch_colors(int depth);
 
 	// Depth Methods
 	void setDepth(int newDepth);
