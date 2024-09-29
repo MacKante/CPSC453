@@ -1,4 +1,5 @@
 #include "SierpinskiTriangle.h"
+#include <math.h>
 
 // Constructors
 SierpinskiTriangle::SierpinskiTriangle() : depth(0) {}
@@ -13,8 +14,24 @@ int SierpinskiTriangle::getDepth() const {
 	return depth;
 }
 
+int SierpinskiTriangle::getTriangles() const {
+	return pow(3, this->depth + 1);
+}
+
 const CPU_Geometry& SierpinskiTriangle::getCPUGeometry() const {
 	return cpuGeom;
+}
+
+void SierpinskiTriangle::resetCPUGeometry(int newDepth) {
+	cpuGeom.verts.clear();
+	cpuGeom.cols.clear();
+	this->depth = newDepth;
+}
+
+void SierpinskiTriangle::resetCPUGeometry() {
+	cpuGeom.verts.clear();
+	cpuGeom.cols.clear();
+	this->depth = 0;
 }
 
 // Sierpinski Generation Methods
@@ -47,15 +64,24 @@ void SierpinskiTriangle::generate_sierpinski_vertices(glm::vec3 v0, glm::vec3 v1
 }
 
 void SierpinskiTriangle::generate_sierpinski_colors(int depth) {
-	cpuGeom.cols.push_back(glm::vec3(1.f, 0.f, 0.f));  // Red for v1
-	cpuGeom.cols.push_back(glm::vec3(1.f, 0.f, 0.f));  // Red for v2
-	cpuGeom.cols.push_back(glm::vec3(1.f, 0.f, 0.f));  // Red for v3
+	if (depth > 0) {
+		float numTriangles = float(pow(3, depth));
 
-	cpuGeom.cols.push_back(glm::vec3(0.f, 1.f, 0.f));  // Green for v4
-	cpuGeom.cols.push_back(glm::vec3(0.f, 1.f, 0.f));  // Green for v5
-	cpuGeom.cols.push_back(glm::vec3(0.f, 1.f, 0.f));  // Green for v6
+		float step = 1.0f / numTriangles;
+		float stepCounter = 0.f;
 
-	cpuGeom.cols.push_back(glm::vec3(0.f, 0.f, 1.f));  // Blue for v7
-	cpuGeom.cols.push_back(glm::vec3(0.f, 0.f, 1.f));  // Blue for v8
-	cpuGeom.cols.push_back(glm::vec3(0.f, 0.f, 1.f));  // Blue for v9
+		for (int i = 0; i < numTriangles; i++) {
+			cpuGeom.cols.push_back(glm::vec3(stepCounter, stepCounter, (1.f - stepCounter)));			// v0
+			cpuGeom.cols.push_back(glm::vec3(stepCounter, (stepCounter + step), (1.f - stepCounter)));	// v1
+			cpuGeom.cols.push_back(glm::vec3((stepCounter + step), stepCounter, (1.f - stepCounter)));	// v2
+
+			stepCounter += step;
+		}
+	}
+	else {
+		cpuGeom.cols.push_back(glm::vec3(1.f, 0.f, 0.f));  // Red for v1
+		cpuGeom.cols.push_back(glm::vec3(0.f, 1.f, 0.f));  // Red for v2
+		cpuGeom.cols.push_back(glm::vec3(0.f, 0.f, 1.f));  // Red for v3
+	}
 }
+

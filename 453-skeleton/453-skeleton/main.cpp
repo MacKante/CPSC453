@@ -47,7 +47,7 @@ int main() {
 
 	// WINDOW
 	glfwInit();
-	Window window(800, 800, "CPSC 453"); // can set callbacks at construction if desired
+	Window window(1000, 1000, "CPSC 453"); // can set callbacks at construction if desired
 
 	GLDebug::enable();
 
@@ -57,45 +57,33 @@ int main() {
 	// CALLBACKS
 	window.setCallbacks(std::make_shared<MyCallbacks>(shader)); // can also update callbacks to new ones
 
-	// GEOMETRY
-	//CPU_Geometry cpuGeom;
-	//GPU_Geometry gpuGeom;
-
 	glm::vec3 v0(-0.5f, -0.5f, 0.f);	// V0
 	glm::vec3 v1(0.5f, -0.5f, 0.f);		// V1
 	glm::vec3 v2(0.f, 0.5f, 0.f);		// V2
 
-	//// Define the vertices of the Sierpinski triangle
-	//cpuGeom.verts.push_back(glm::vec3(-0.5f, -0.5f, 0.f)); // v1
-	//cpuGeom.verts.push_back(glm::vec3(0.f, -0.5f, 0.f));   // v2
-	//cpuGeom.verts.push_back(glm::vec3(-0.25f, 0.f, 0.f));  // v3
+	//SierpinskiTriangle sierpinski = SierpinskiTriangle(6);
+	//sierpinski.draw_sierpinski_triangle();
 
-	//cpuGeom.verts.push_back(glm::vec3(0.f, -0.5f, 0.f));   // v4
-	//cpuGeom.verts.push_back(glm::vec3(0.5f, -0.5f, 0.f));  // v5
-	//cpuGeom.verts.push_back(glm::vec3(0.25f, 0.f, 0.f));   // v6
+	//// GEOMETRY
+	//CPU_Geometry cpuGeom = sierpinski.getCPUGeometry();
+	//GPU_Geometry gpuGeom;
 
-	//cpuGeom.verts.push_back(glm::vec3(-0.25f, 0.f, 0.f));  // v7 (repeat to match triangles)
-	//cpuGeom.verts.push_back(glm::vec3(0.25f, 0.f, 0.f));   // v8
-	//cpuGeom.verts.push_back(glm::vec3(0.f, 0.5f, 0.f));    // v9
-
-	//// Define corresponding colors for each vertex
-	//cpuGeom.cols.push_back(glm::vec3(1.f, 0.f, 0.f));  // Red for v1
-	//cpuGeom.cols.push_back(glm::vec3(1.f, 0.f, 0.f));  // Red for v2
-	//cpuGeom.cols.push_back(glm::vec3(1.f, 0.f, 0.f));  // Red for v3
-
-	//cpuGeom.cols.push_back(glm::vec3(0.f, 1.f, 0.f));  // Green for v4
-	//cpuGeom.cols.push_back(glm::vec3(0.f, 1.f, 0.f));  // Green for v5
-	//cpuGeom.cols.push_back(glm::vec3(0.f, 1.f, 0.f));  // Green for v6
-
-	//cpuGeom.cols.push_back(glm::vec3(0.f, 0.f, 1.f));  // Blue for v7
-	//cpuGeom.cols.push_back(glm::vec3(0.f, 0.f, 1.f));  // Blue for v8
-	//cpuGeom.cols.push_back(glm::vec3(0.f, 0.f, 1.f));  // Blue for v9
-
-	SierpinskiTriangle sierpinski = SierpinskiTriangle(1);
-	sierpinski.draw_sierpinski_triangle();
-
-	CPU_Geometry cpuGeom = sierpinski.getCPUGeometry();
+	CPU_Geometry cpuGeom;
 	GPU_Geometry gpuGeom;
+
+	cpuGeom.verts.push_back(v0);
+	cpuGeom.verts.push_back(v1);
+	cpuGeom.verts.push_back(v1);
+	cpuGeom.verts.push_back(v2);
+	cpuGeom.verts.push_back(v2);
+	cpuGeom.verts.push_back(v0);
+
+	cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
+	cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
+	cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
+	cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
+	cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
+	cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
 
 	gpuGeom.setVerts(cpuGeom.verts);
 	gpuGeom.setCols(cpuGeom.cols);
@@ -109,7 +97,7 @@ int main() {
 
 		glEnable(GL_FRAMEBUFFER_SRGB);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glDrawArrays(GL_TRIANGLES, 0, 9);
+		glDrawArrays(GL_LINES, 0, cpuGeom.verts.size());
 		glDisable(GL_FRAMEBUFFER_SRGB); // disable sRGB for things like imgui
 
 		window.swapBuffers();

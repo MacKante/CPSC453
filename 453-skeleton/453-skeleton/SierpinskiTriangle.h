@@ -26,9 +26,10 @@ class SierpinskiTriangle {
 		// Depth Methods
 		void setDepth(int newDepth);
 		int getDepth() const;
+		int getTriangles() const;
 
 		// CPU_GEOM
 		const CPU_Geometry& getCPUGeometry() const;
-
-
+		void resetCPUGeometry(int newDepth);
+		void resetCPUGeometry();
 };
