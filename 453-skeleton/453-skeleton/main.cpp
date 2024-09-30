@@ -88,7 +88,7 @@ int main() {
 
 
 	// Koch Snowflake
-	KochSnowflake koch = KochSnowflake(1);
+	KochSnowflake koch = KochSnowflake(6);
 	koch.draw_koch_snowflake();
 
 	// GEOMETRY
