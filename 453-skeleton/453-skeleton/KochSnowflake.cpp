@@ -50,23 +50,23 @@ void KochSnowflake::draw_koch_snowflake() {
 
 void KochSnowflake::generate_koch_vertices(glm::vec3 p0, glm::vec3 p1, int depth) {
 	if (depth > 0) {
-		// One third of the length
+		// One third of the vector length 
 		glm::vec3 length = (p1 - p0) / 3.0f;
 
 		// extra point calculations
 		glm::vec3 p2 = p0 + length;
 		glm::vec3 p3 = p1 - length;
 
-		glm::vec3 middlepoint = (p3 + p2) * 0.5f;	// Direction vector from p2 to p3
-		glm::vec3 direction = p3 - p2;
+		glm::vec3 middlepoint = (p3 + p2) * 0.5f;				// Middlepoint
+		glm::vec3 direction = p3 - p2;							// Direction vector from p2 to p3
 		float height = sqrt(3) * glm::length(direction) / 2.0f; // Height of the triangle
 
-		// Perpendicular vector to direction (rotate by 90 degrees counterclockwise)
-		glm::vec3 perpendicular(-direction.y, direction.x, 0.0f);
+		// Perpendicular vector to direction
+		glm::vec3 perpendicular(direction.y, -direction.x, 0.0f);
 		perpendicular = glm::normalize(perpendicular) * height;
 
 		// Add the middlepoint and the perpendicular vector
-		glm::vec3 p4 = middlepoint - perpendicular;
+		glm::vec3 p4 = middlepoint + perpendicular;
 
 		// Recursive calls for each segment
 		generate_koch_vertices(p0, p2, depth - 1); // p0 -> p2

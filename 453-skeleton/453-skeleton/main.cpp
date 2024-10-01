@@ -12,6 +12,7 @@
 
 #include "SierpinskiTriangle.h"
 #include "KochSnowflake.h"
+#include "DragonCurve.h"
 
 
 // EXAMPLE CALLBACKS
@@ -62,39 +63,26 @@ int main() {
 	glm::vec3 v1(0.5f, -0.5f, 0.f);		// V1
 	glm::vec3 v2(0.f, 0.5f, 0.f);		// V2
 
-	//SierpinskiTriangle sierpinski = SierpinskiTriangle(6);
-	//sierpinski.draw_sierpinski_triangle();
-
-	//// GEOMETRY
-	//CPU_Geometry cpuGeom = sierpinski.getCPUGeometry();
-	//GPU_Geometry gpuGeom;
-
-	//CPU_Geometry cpuGeom;
-	//GPU_Geometry gpuGeom;
-
-	//cpuGeom.verts.push_back(v0);
-	//cpuGeom.verts.push_back(v1);
-	//cpuGeom.verts.push_back(v1);
-	//cpuGeom.verts.push_back(v2);
-	//cpuGeom.verts.push_back(v2);
-	//cpuGeom.verts.push_back(v0);
-
-	//cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
-	//cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
-	//cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
-	//cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
-	//cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
-	//cpuGeom.cols.push_back(glm::vec3(1.f, 1.f, 1.f));
-
-
-	// Koch Snowflake
-	KochSnowflake koch = KochSnowflake(6);
-	koch.draw_koch_snowflake();
-
 	// GEOMETRY
-	CPU_Geometry cpuGeom = koch.getCPUGeometry();
+	CPU_Geometry cpuGeom;
 	GPU_Geometry gpuGeom;
 
+	/* Sierpinski Triangle */
+	//SierpinskiTriangle sierpinski = SierpinskiTriangle(1);
+	//sierpinski.draw_sierpinski_triangle();
+	//cpuGeom = sierpinski.getCPUGeometry();	
+
+	/* Koch Snowflake */
+	//KochSnowflake koch = KochSnowflake(4);
+	//koch.draw_koch_snowflake();
+	//cpuGeom = koch.getCPUGeometry();
+
+	/* Dragon Curve */
+	//DragonCurve dragon = DragonCurve(8);
+	//dragon.draw_dragon_curve();
+	//cpuGeom = dragon.getCPUGeometry();
+
+	// Setting Geometry
 	gpuGeom.setVerts(cpuGeom.verts);
 	gpuGeom.setCols(cpuGeom.cols);
 

@@ -102,7 +102,7 @@ foreach(file ${files})
 	configure_file(${file} shaders/${name})
 endforeach()
 
-add_executable(${APP_NAME} ${SOURCES}    "453-skeleton/SierpinskiTriangle.h" "453-skeleton/SierpinskiTriangle.cpp" "453-skeleton/KochSnowflake.h" "453-skeleton/KochSnowflake.cpp")
+add_executable(${APP_NAME} ${SOURCES}    "453-skeleton/SierpinskiTriangle.h" "453-skeleton/SierpinskiTriangle.cpp" "453-skeleton/KochSnowflake.h" "453-skeleton/KochSnowflake.cpp" "453-skeleton/DragonCurve.h" "453-skeleton/DragonCruve.cpp")
 target_include_directories(${APP_NAME} PRIVATE ${INCLUDES})
 target_link_libraries(${APP_NAME} ${LIBRARIES})
 target_compile_definitions(${APP_NAME} PRIVATE ${DEFINITIONS})
