@@ -38,6 +38,9 @@ void DragonCurve::resetCPUGeometry() {
 
 // Generation Methods
 void DragonCurve::draw_dragon_curve() {
+	cpuGeom.verts.clear();
+	cpuGeom.cols.clear();
+
 	glm::vec3 v0(-0.5f, 0.0f, 0.0f);
 	glm::vec3 v1(0.5f, 0.0f, 0.0f);
 

@@ -38,6 +38,9 @@ void KochSnowflake::resetCPUGeometry() {
 
 // Generation Methods
 void KochSnowflake::draw_koch_snowflake() {
+	cpuGeom.verts.clear();
+	cpuGeom.cols.clear();
+
 	glm::vec3 v0(-0.5f, -0.5f, 0.f);
 	glm::vec3 v1(0.5f, -0.5f, 0.f);
 	glm::vec3 v2(0.f, 0.5f, 0.f);

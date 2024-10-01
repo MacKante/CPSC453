@@ -36,6 +36,8 @@ void SierpinskiTriangle::resetCPUGeometry() {
 
 // Sierpinski Generation Methods
 void SierpinskiTriangle::draw_sierpinski_triangle() {
+	cpuGeom.verts.clear();
+	cpuGeom.cols.clear();
 
 	glm::vec3 v0(-0.5f, -0.5f, 0.f);
 	glm::vec3 v1(0.5f, -0.5f, 0.f);
@@ -64,24 +66,17 @@ void SierpinskiTriangle::generate_sierpinski_vertices(glm::vec3 v0, glm::vec3 v1
 }
 
 void SierpinskiTriangle::generate_sierpinski_colors(int depth) {
-	if (depth > 0) {
-		float numTriangles = float(pow(3, depth));
+	float numTriangles = float(pow(3, depth));
 
-		float step = 1.0f / numTriangles;
-		float stepCounter = 0.f;
+	float step = 1.0f / numTriangles;
+	float stepCounter = 0.f;
 
-		for (int i = 0; i < numTriangles; i++) {
-			cpuGeom.cols.push_back(glm::vec3(stepCounter, stepCounter, (1.f - stepCounter)));			// v0
-			cpuGeom.cols.push_back(glm::vec3(stepCounter, (stepCounter + step), (1.f - stepCounter)));	// v1
-			cpuGeom.cols.push_back(glm::vec3((stepCounter + step), stepCounter, (1.f - stepCounter)));	// v2
+	for (int i = 0; i < numTriangles; i++) {
+		cpuGeom.cols.push_back(glm::vec3(stepCounter, stepCounter, (1.f - stepCounter)));			// v0
+		cpuGeom.cols.push_back(glm::vec3(stepCounter, (stepCounter + step), (1.f - stepCounter)));	// v1
+		cpuGeom.cols.push_back(glm::vec3((stepCounter + step), stepCounter, (1.f - stepCounter)));	// v2
 
-			stepCounter += step;
-		}
-	}
-	else {
-		cpuGeom.cols.push_back(glm::vec3(1.f, 0.f, 0.f));  // Red for v1
-		cpuGeom.cols.push_back(glm::vec3(0.f, 1.f, 0.f));  // Red for v2
-		cpuGeom.cols.push_back(glm::vec3(0.f, 0.f, 1.f));  // Red for v3
+		stepCounter += step;
 	}
 }
 
