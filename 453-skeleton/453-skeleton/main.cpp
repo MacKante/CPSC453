@@ -15,9 +15,9 @@
 #include "KochSnowflake.h"
 #include "DragonCurve.h"
 
-// Definesp0
+// Defines for MAX
 #define SIERPINSKI_MAX 7
-#define PYTHAGORAS_MAX 7
+#define PYTHAGORAS_MAX 8
 #define KOCH_MAX 5
 #define DRAGON_MAX 12
 
