@@ -9,7 +9,6 @@ class SierpinskiTriangle {
 	private:
 		CPU_Geometry cpuGeom;	// CPU
 		int depth = 0;
-
 	public:
 
 		// Constructor
@@ -26,7 +25,6 @@ class SierpinskiTriangle {
 		// Depth Methods
 		void setDepth(int newDepth);
 		int getDepth() const;
-		int getTriangles() const;
 
 		// CPU_GEOM
 		const CPU_Geometry& getCPUGeometry() const;

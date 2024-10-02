@@ -14,10 +14,6 @@ int SierpinskiTriangle::getDepth() const {
 	return depth;
 }
 
-int SierpinskiTriangle::getTriangles() const {
-	return pow(3, this->depth + 1);
-}
-
 const CPU_Geometry& SierpinskiTriangle::getCPUGeometry() const {
 	return cpuGeom;
 }
