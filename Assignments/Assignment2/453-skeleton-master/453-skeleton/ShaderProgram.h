@@ -27,6 +27,8 @@ public:
 
 	void friend attach(ShaderProgram& sp, Shader& s);
 
+	GLuint getProgram();
+
 private:
 	ShaderProgramHandle programID;
 

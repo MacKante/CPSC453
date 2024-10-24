@@ -66,9 +66,6 @@ public:
 	}
 
 	// Cursor Position Input
-
-
-
 	glm::vec2 mouseGL() {
 		glm::vec2 startingVec(xScreenPosition, yScreenPosition);
 		glm::vec2 shiftedVec = startingVec + glm::vec2(0.5f, 0.5f);
@@ -101,24 +98,24 @@ CPU_Geometry shipGeom(float width, float height) {
 	float halfHeight = height / 2.0f;
 	CPU_Geometry retGeom;
 	// vertices for the spaceship quad
-	retGeom.verts.push_back(glm::vec3(-halfWidth, halfHeight, 0.f));
-	retGeom.verts.push_back(glm::vec3(-halfWidth, -halfHeight, 0.f));
-	retGeom.verts.push_back(glm::vec3(halfWidth, -halfHeight, 0.f));
-	retGeom.verts.push_back(glm::vec3(-halfWidth, halfHeight, 0.f));
-	retGeom.verts.push_back(glm::vec3(halfWidth, -halfHeight, 0.f));
-	retGeom.verts.push_back(glm::vec3(halfWidth, halfHeight, 0.f));
+	//retGeom.verts.push_back(glm::vec3(-halfWidth, halfHeight, 0.f));
+	//retGeom.verts.push_back(glm::vec3(-halfWidth, -halfHeight, 0.f));
+	//retGeom.verts.push_back(glm::vec3(halfWidth, -halfHeight, 0.f));
+	//retGeom.verts.push_back(glm::vec3(-halfWidth, halfHeight, 0.f));
+	//retGeom.verts.push_back(glm::vec3(halfWidth, -halfHeight, 0.f));
+	//retGeom.verts.push_back(glm::vec3(halfWidth, halfHeight, 0.f));
 
 	// For full marks (Part IV), you'll need to use the following vertex coordinates instead.
 	// Then, you'd get the correct scale/translation/rotation by passing in uniforms into
 	// the vertex shader.
-	/*
+	
 	retGeom.verts.push_back(glm::vec3(-1.f, 1.f, 0.f));
 	retGeom.verts.push_back(glm::vec3(-1.f, -1.f, 0.f));
 	retGeom.verts.push_back(glm::vec3(1.f, -1.f, 0.f));
 	retGeom.verts.push_back(glm::vec3(-1.f, 1.f, 0.f));
 	retGeom.verts.push_back(glm::vec3(1.f, -1.f, 0.f));
 	retGeom.verts.push_back(glm::vec3(1.f, 1.f, 0.f));
-	*/
+	
 
 	// texture coordinates
 	retGeom.texCoords.push_back(glm::vec2(0.f, 1.f));
@@ -163,12 +160,23 @@ int main() {
 	// Game Score
 	int score = 0;
 
+	// Scaling Matrix
+	glm::mat3 scalingMatrix = glm::mat3(
+		0.15f, 0.0f, 0.0f,
+		0.0f, 0.1f, 0.0f,
+		0.0f, 0.0f, 1.0f
+	);
+
 	// RENDER LOOP
 	while (!window.shouldClose()) {
 		
 		glfwPollEvents();
 
 		shader.use();
+
+		GLint myLoc = glGetUniformLocation(shader.getProgram(), "transformationMatrix");
+		glUniformMatrix3fv(myLoc, 1, GL_FALSE, &scalingMatrix[0][0]);
+
 		ship.ggeom.bind();
 
 		glEnable(GL_FRAMEBUFFER_SRGB);
