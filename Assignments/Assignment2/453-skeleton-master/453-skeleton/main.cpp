@@ -16,6 +16,9 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 800
+
 // An example struct for Game Objects.
 // You are encouraged to customize this as you see fit.
 struct GameObject {
@@ -45,15 +48,51 @@ struct GameObject {
 class MyCallbacks : public CallbackInterface {
 
 public:
-	MyCallbacks(ShaderProgram& shader) : shader(shader) {}
+	MyCallbacks(ShaderProgram& shader, int screenWidth, int screenHeight) :
+		screenDim(screenWidth, screenHeight),
+		shader(shader)
+	{}
 
 	virtual void keyCallback(int key, int scancode, int action, int mods) {
 		if (key == GLFW_KEY_R && action == GLFW_PRESS) {
 			shader.recompile();
 		}
+		else if (key == GLFW_KEY_W && action == action == GLFW_PRESS) {
+			std::cout << "Forward key pressed" << std::endl;
+		}
+		else if (key == GLFW_KEY_S && action == action == GLFW_PRESS) {
+			std::cout << "Backward key pressed" << std::endl;
+		}
+	}
+
+	// Cursor Position Input
+
+
+
+	glm::vec2 mouseGL() {
+		glm::vec2 startingVec(xScreenPosition, yScreenPosition);
+		glm::vec2 shiftedVec = startingVec + glm::vec2(0.5f, 0.5f);
+		glm::vec2 scaledToZeroOne = shiftedVec / glm::vec2(screenDim);
+
+		glm::vec2 flippedY = glm::vec2(scaledToZeroOne.x, 1.0f - scaledToZeroOne.y);
+
+		glm::vec2 final = flippedY * 2.0f - glm::vec2(1.0f, 1.0f);
+
+		return final;
+	}
+
+	virtual void cursorPosCallback(double xpos, double ypos) {
+		xScreenPosition = xpos;
+		yScreenPosition = ypos;
+		std::cout << "xPos: " << mouseGL().x << ", " << "yPos: " << mouseGL().y << std::endl;
 	}
 
 private:
+	glm::ivec2 screenDim;
+
+	double xScreenPosition;
+	double yScreenPosition;
+
 	ShaderProgram& shader;
 };
 
@@ -91,6 +130,8 @@ CPU_Geometry shipGeom(float width, float height) {
 	return retGeom;
 }
 
+CPU_Geometry diamondGeom(float width, float height);
+
 // END EXAMPLES
 
 int main() {
@@ -98,7 +139,7 @@ int main() {
 
 	// WINDOW
 	glfwInit();
-	Window window(800, 800, "CPSC 453"); // can set callbacks at construction if desired
+	Window window(WINDOW_WIDTH, WINDOW_HEIGHT, "CPSC 453"); // can set callbacks at construction if desired
 
 
 	GLDebug::enable();
@@ -107,7 +148,7 @@ int main() {
 	ShaderProgram shader("shaders/test.vert", "shaders/test.frag");
 
 	// CALLBACKS
-	window.setCallbacks(std::make_shared<MyCallbacks>(shader)); // can also update callbacks to new ones
+	window.setCallbacks(std::make_shared<MyCallbacks>(shader, WINDOW_WIDTH, WINDOW_HEIGHT)); // can also update callbacks to new ones
 
 	// GL_NEAREST looks a bit better for low-res pixel art than GL_LINEAR.
 	// But for most other cases, you'd want GL_LINEAR interpolation.
@@ -119,9 +160,12 @@ int main() {
 	ship.ggeom.setVerts(ship.cgeom.verts);
 	ship.ggeom.setTexCoords(ship.cgeom.texCoords);
 
+	// Game Score
+	int score = 0;
+
 	// RENDER LOOP
 	while (!window.shouldClose()) {
-		int score;
+		
 		glfwPollEvents();
 
 		shader.use();
@@ -157,7 +201,7 @@ int main() {
 
 		// Scale up text a little, and set its value
 		ImGui::SetWindowFontScale(1.5f);
-		ImGui::Text("Score: %d", 0); // Second parameter gets passed into "%d"
+		ImGui::Text("Score: %d", score); // Second parameter gets passed into "%d"
 
 		// End the window.
 		ImGui::End();
