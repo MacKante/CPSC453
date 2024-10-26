@@ -4,6 +4,9 @@
 #include <iostream>
 #include <string>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 #include "Geometry.h"
 #include "GLDebug.h"
 #include "Log.h"
@@ -16,32 +19,81 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 
+#include <glm/gtc/type_ptr.hpp>
+
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800
+
+#define DEFAULT_SHIP_WIDTH 0.12f
+#define DEFAULT_SHIP_HEIGHT 0.08f
+
+#define DEFAULT_DIAMOND_WIDTH 0.10f
+#define DEFAULT_DIAMOND_HEIGHT 0.10f
+
 
 // An example struct for Game Objects.
 // You are encouraged to customize this as you see fit.
 struct GameObject {
 	// Struct's constructor deals with the texture.
 	// Also sets default position, theta, scale, and transformationMatrix
-	GameObject(std::string texturePath, GLenum textureInterpolation) :
-		texture(texturePath, textureInterpolation),
-		position(0.0f, 0.0f, 0.0f),
-		theta(0),
-		scale(1),
-		transformationMatrix(1.0f) // This constructor sets it as the identity matrix
-	{}
+	GameObject(std::string texturePath, GLenum textureInterpolation, float objectWidth, float objectHeight) :
+		texture(texturePath, textureInterpolation)
+	{
+		// vertex coordinates
+		cgeom.verts.push_back(glm::vec3(-1.f, 1.f, 0.f));
+		cgeom.verts.push_back(glm::vec3(-1.f, -1.f, 0.f));
+		cgeom.verts.push_back(glm::vec3(1.f, -1.f, 0.f));
+		cgeom.verts.push_back(glm::vec3(-1.f, 1.f, 0.f));
+		cgeom.verts.push_back(glm::vec3(1.f, -1.f, 0.f));
+		cgeom.verts.push_back(glm::vec3(1.f, 1.f, 0.f));
+
+		// texture coordinates
+		cgeom.texCoords.push_back(glm::vec2(0.f, 1.f));
+		cgeom.texCoords.push_back(glm::vec2(0.f, 0.f));
+		cgeom.texCoords.push_back(glm::vec2(1.f, 0.f));
+		cgeom.texCoords.push_back(glm::vec2(0.f, 1.f));
+		cgeom.texCoords.push_back(glm::vec2(1.f, 0.f));
+		cgeom.texCoords.push_back(glm::vec2(1.f, 1.f));
+
+		// GPU Geometry
+		ggeom.setVerts(cgeom.verts);
+		ggeom.setTexCoords(cgeom.texCoords);
+
+		// Setting Initial Transformation Matrixes
+		scalingMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(objectWidth, objectHeight, 1.0f));
+		rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	}
+
+	glm::vec3 getPosition() {
+		return glm::vec3(translationMatrix[3][0], translationMatrix[3][1], 1.0f);
+	}
+
+	glm::mat4 getTransformationMatrix() {
+		return translationMatrix * rotationMatrix * scalingMatrix;
+	}
+
+	void translateObject(glm::vec3 translateVec) {
+		translationMatrix = glm::translate(translationMatrix, translateVec);
+	}
+
+	void updateShip(glm::vec2 cursorPosition, glm::vec3 translateVector) {
+
+	}
+
+	void updateDiamond() {
+
+	}
 
 	CPU_Geometry cgeom;
 	GPU_Geometry ggeom;
 	Texture texture;
 
 	glm::vec3 position;
-	float theta; // Object's rotation
-	// Alternatively, you could represent rotation via a normalized heading vec:
-	// glm::vec3 heading;
-	float scale; // Or, alternatively, a glm::vec2 scale;
-	glm::mat4 transformationMatrix;
+
+	glm::mat4 scalingMatrix;
+	glm::mat4 rotationMatrix;
+	glm::mat4 translationMatrix;
 };
 
 // EXAMPLE CALLBACKS
@@ -55,13 +107,18 @@ public:
 
 	virtual void keyCallback(int key, int scancode, int action, int mods) {
 		if (key == GLFW_KEY_R && action == GLFW_PRESS) {
+			resetFlag = true;
 			shader.recompile();
 		}
-		else if (key == GLFW_KEY_W && action == action == GLFW_PRESS) {
-			std::cout << "Forward key pressed" << std::endl;
+		else if (key == GLFW_KEY_W && action == GLFW_PRESS) {
+			playerInput = glm::vec3(0.0f, 0.10f, 0.0f);
+			// std::cout << "X coordinate: "<< transformationMatrix[3][0] << " Y coordinate: " << transformationMatrix[3][1] << std::endl;
+			// std::cout << "Forward key pressed" << std::endl;
 		}
-		else if (key == GLFW_KEY_S && action == action == GLFW_PRESS) {
-			std::cout << "Backward key pressed" << std::endl;
+		else if (key == GLFW_KEY_S && action == GLFW_PRESS) {
+			playerInput = glm::vec3(0.0f, -0.10f, 0.0f);
+			// std::cout << "X coordinate: " << transformationMatrix[3][0] << " Y coordinate: " << transformationMatrix[3][1] << std::endl;
+			// std::cout << "Backward key pressed" << std::endl;
 		}
 	}
 
@@ -70,9 +127,7 @@ public:
 		glm::vec2 startingVec(xScreenPosition, yScreenPosition);
 		glm::vec2 shiftedVec = startingVec + glm::vec2(0.5f, 0.5f);
 		glm::vec2 scaledToZeroOne = shiftedVec / glm::vec2(screenDim);
-
 		glm::vec2 flippedY = glm::vec2(scaledToZeroOne.x, 1.0f - scaledToZeroOne.y);
-
 		glm::vec2 final = flippedY * 2.0f - glm::vec2(1.0f, 1.0f);
 
 		return final;
@@ -84,50 +139,23 @@ public:
 		std::cout << "xPos: " << mouseGL().x << ", " << "yPos: " << mouseGL().y << std::endl;
 	}
 
+	glm::vec3 getPlayerInput() {
+		glm::vec3 returnInput = playerInput;
+		playerInput = glm::vec3(0.0f, 0.0f, 0.0f);
+		return returnInput;
+	}
+	
 private:
 	glm::ivec2 screenDim;
 
 	double xScreenPosition;
 	double yScreenPosition;
 
+	glm::vec3 playerInput = glm::vec3(0.0f, 0.0f, 0.0f);
+	bool resetFlag = false;
+
 	ShaderProgram& shader;
 };
-
-CPU_Geometry shipGeom(float width, float height) {
-	float halfWidth = width / 2.0f;
-	float halfHeight = height / 2.0f;
-	CPU_Geometry retGeom;
-	// vertices for the spaceship quad
-	//retGeom.verts.push_back(glm::vec3(-halfWidth, halfHeight, 0.f));
-	//retGeom.verts.push_back(glm::vec3(-halfWidth, -halfHeight, 0.f));
-	//retGeom.verts.push_back(glm::vec3(halfWidth, -halfHeight, 0.f));
-	//retGeom.verts.push_back(glm::vec3(-halfWidth, halfHeight, 0.f));
-	//retGeom.verts.push_back(glm::vec3(halfWidth, -halfHeight, 0.f));
-	//retGeom.verts.push_back(glm::vec3(halfWidth, halfHeight, 0.f));
-
-	// For full marks (Part IV), you'll need to use the following vertex coordinates instead.
-	// Then, you'd get the correct scale/translation/rotation by passing in uniforms into
-	// the vertex shader.
-	
-	retGeom.verts.push_back(glm::vec3(-1.f, 1.f, 0.f));
-	retGeom.verts.push_back(glm::vec3(-1.f, -1.f, 0.f));
-	retGeom.verts.push_back(glm::vec3(1.f, -1.f, 0.f));
-	retGeom.verts.push_back(glm::vec3(-1.f, 1.f, 0.f));
-	retGeom.verts.push_back(glm::vec3(1.f, -1.f, 0.f));
-	retGeom.verts.push_back(glm::vec3(1.f, 1.f, 0.f));
-	
-
-	// texture coordinates
-	retGeom.texCoords.push_back(glm::vec2(0.f, 1.f));
-	retGeom.texCoords.push_back(glm::vec2(0.f, 0.f));
-	retGeom.texCoords.push_back(glm::vec2(1.f, 0.f));
-	retGeom.texCoords.push_back(glm::vec2(0.f, 1.f));
-	retGeom.texCoords.push_back(glm::vec2(1.f, 0.f));
-	retGeom.texCoords.push_back(glm::vec2(1.f, 1.f));
-	return retGeom;
-}
-
-CPU_Geometry diamondGeom(float width, float height);
 
 // END EXAMPLES
 
@@ -138,45 +166,42 @@ int main() {
 	glfwInit();
 	Window window(WINDOW_WIDTH, WINDOW_HEIGHT, "CPSC 453"); // can set callbacks at construction if desired
 
-
 	GLDebug::enable();
 
 	// SHADERS
 	ShaderProgram shader("shaders/test.vert", "shaders/test.frag");
 
 	// CALLBACKS
-	window.setCallbacks(std::make_shared<MyCallbacks>(shader, WINDOW_WIDTH, WINDOW_HEIGHT)); // can also update callbacks to new ones
+	std::shared_ptr<MyCallbacks> callback = std::make_shared<MyCallbacks>(shader, WINDOW_WIDTH, WINDOW_HEIGHT);
+	window.setCallbacks(callback); // can also update callbacks to new ones
 
 	// GL_NEAREST looks a bit better for low-res pixel art than GL_LINEAR.
 	// But for most other cases, you'd want GL_LINEAR interpolation.
-	GameObject ship("textures/ship.png", GL_NEAREST);
 
-	ship.cgeom = shipGeom(0.18f, 0.12f);
-
-
-	ship.ggeom.setVerts(ship.cgeom.verts);
-	ship.ggeom.setTexCoords(ship.cgeom.texCoords);
+	GameObject ship("textures/ship.png", GL_NEAREST, DEFAULT_SHIP_WIDTH, DEFAULT_SHIP_HEIGHT);
 
 	// Game Score
 	int score = 0;
-
-	// Scaling Matrix
-	glm::mat3 scalingMatrix = glm::mat3(
-		0.15f, 0.0f, 0.0f,
-		0.0f, 0.1f, 0.0f,
-		0.0f, 0.0f, 1.0f
-	);
 
 	// RENDER LOOP
 	while (!window.shouldClose()) {
 		
 		glfwPollEvents();
 
+		glm::vec3 playerInput = callback->getPlayerInput();
+		ship.translateObject(playerInput);
+
 		shader.use();
 
-		GLint myLoc = glGetUniformLocation(shader.getProgram(), "transformationMatrix");
-		glUniformMatrix3fv(myLoc, 1, GL_FALSE, &scalingMatrix[0][0]);
+		glm::mat4 transformationMatrix = ship.getTransformationMatrix();
 
+		glUniformMatrix4fv(
+			glGetUniformLocation(shader.getProgram(), "transformationMatrix"),
+			1, GL_FALSE, glm::value_ptr(transformationMatrix)
+		);
+
+		// std::cout << "X coordinate: " << transformationMatrix[3][0] << " Y coordinate: " << transformationMatrix[3][1] << std::endl;
+		 
 		ship.ggeom.bind();
 
 		glEnable(GL_FRAMEBUFFER_SRGB);

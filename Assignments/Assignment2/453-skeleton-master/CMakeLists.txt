@@ -110,7 +110,7 @@ configure_file(textures/diamond.png textures/diamond.png COPYONLY)
 configure_file(textures/fire.png textures/fire.png COPYONLY)
 
 
-add_executable(${APP_NAME} ${SOURCES})
+add_executable(${APP_NAME} ${SOURCES} "453-skeleton/GameUtils.h" "453-skeleton/GameUtils.cpp")
 target_include_directories(${APP_NAME} PRIVATE ${INCLUDES})
 target_link_libraries(${APP_NAME} ${LIBRARIES})
 target_compile_definitions(${APP_NAME} PRIVATE ${DEFINITIONS})
