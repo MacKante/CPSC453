@@ -148,6 +148,27 @@ private:
 	const char* options[3]; // Options for the combo box
 };
 
+/*----------------------- de Casteljau Algorithm -----------------------*/
+
+glm::vec3 deCasteljau(std::vector<glm::vec3>& controlPoints, float u) {
+	// Copy of controlPoints to play with
+	std::vector<glm::vec3> P = controlPoints;
+
+	// Degree 
+	int d = P.size();
+	
+	for (int i = 1; i < d; ++i) {
+		for (int j = 0; j < (d - i); ++j) {
+			P[j] = 	(1.0f - u) * P[j] + u * P[j + 1];
+		}
+	}
+
+	return P[0];
+}
+
+
+
+
 int main() {
 	Log::debug("Starting main");
 
