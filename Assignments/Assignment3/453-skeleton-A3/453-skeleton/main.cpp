@@ -19,6 +19,13 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
+enum CURVE_TYPE {
+	BEZIER,
+	B_SPLINE
+};
+
+enum CURVE_TYPE curve_type = B_SPLINE;
+
 class CurveEditorCallBack : public CallbackInterface {
 public:
 	CurveEditorCallBack() {}
@@ -154,20 +161,47 @@ glm::vec3 deCasteljau(std::vector<glm::vec3>& controlPoints, float u) {
 	// Copy of controlPoints to play with
 	std::vector<glm::vec3> P = controlPoints;
 
-	// Degree 
+	// Degree: n + 1
 	int d = P.size();
-	
+
+	// Create smaller control points
 	for (int i = 1; i < d; ++i) {
 		for (int j = 0; j < (d - i); ++j) {
-			P[j] = 	(1.0f - u) * P[j] + u * P[j + 1];
+			P[j] = (1.0f - u) * P[j] + u * P[j + 1];
 		}
 	}
 
+	// Return curve point 
 	return P[0];
 }
 
+std::vector<glm::vec3> chaikinCurveSubdivision(std::vector<glm::vec3>& coarsePoints, int iterations = 8) {
+	// No iterations or not enough points to subdivide
+	int n = coarsePoints.size();
+	if ((iterations == 0) || (n < 2)) {
+		return coarsePoints;
+	}
 
+	std::vector<glm::vec3> C = coarsePoints;
+	std::vector<glm::vec3> F;
 
+	// Special mask at the beginning
+	F.push_back(C[0]);
+	F.push_back(0.5f*C[0] + 0.5f*C[1]);
+
+	// Periodic mask for the interior points
+	for (int i = 1; i < n - 2; ++i) {
+		F.push_back(0.75f * C[i] + 0.25f * C[i + 1]);
+		F.push_back(0.25f * C[i] + 0.75f * C[i + 1]);
+	}
+
+	// Special mask at the end
+	F.push_back(0.5f * C[n - 2] + 0.5f * C[n - 1]);
+	F.push_back(C[n - 1]);
+
+	// Perform subdivision on fine points if there are more iterations
+	return chaikinCurveSubdivision(F, iterations - 1);
+}
 
 int main() {
 	Log::debug("Starting main");
@@ -199,11 +233,12 @@ int main() {
 	);
 
 	std::vector<glm::vec3> cp_positions_vector = {
-		{-.5f, -.5f, 0.f},
-		{ .5f, -.5f, 0.f},
-		{ .5f,  .5f, 0.f},
-		{-.5f,  .5f, 0.f}
+		{-0.8f, -0.4f, 0.0f},
+		{-0.4f,  0.6f, 0.0f},
+		{ 0.4f, -0.6f, 0.0f},
+		{ 0.8f,  0.4f, 0.0f}
 	};
+
 	glm::vec3 cp_point_colour	= { 1.f,0.f,0.f };
 	glm::vec3 cp_line_colour	= { 0.f,1.f,0.f };
 
@@ -220,6 +255,10 @@ int main() {
 	GPU_Geometry cp_line_gpu;
 	cp_line_gpu.setVerts(cp_line_cpu.verts);
 	cp_line_gpu.setCols(cp_line_cpu.cols);
+
+	// curve geometry
+	CPU_Geometry curve_cpu_geom;
+	GPU_Geometry curve_gpu_geom;	
 
 	while (!window.shouldClose()) {
 		glfwPollEvents();
@@ -246,7 +285,36 @@ int main() {
 		cp_line_gpu.bind();
 		//glLineWidth(10.f); //May do nothing (like it does on my computer): https://community.khronos.org/t/3-0-wide-lines-deprecated/55426
 		glDrawArrays(GL_LINE_STRIP, 0, cp_line_cpu.verts.size());
-		
+
+		/* ----------------- Curve Rendering -----------------*/
+			// Render curve points
+			std::vector<glm::vec3> curve_points;
+
+			// Generate points on the curve
+			switch (curve_type) {
+				case BEZIER:
+					for (float u = 0.0f; u < 1.0f; u += 0.01f) {
+						glm::vec3 curve_point = deCasteljau(cp_positions_vector, u);
+						curve_points.push_back(curve_point);
+					}
+					break;
+				case B_SPLINE:
+					curve_points = chaikinCurveSubdivision(cp_positions_vector);
+					break;
+			}
+
+			// Update CPU and GPU geometries
+			curve_cpu_geom.verts = curve_points;
+			curve_cpu_geom.cols = std::vector<glm::vec3>(curve_points.size(), {0.0f, 0.0f, 0.0f}); // black curve line
+			curve_gpu_geom.setVerts(curve_cpu_geom.verts);
+			curve_gpu_geom.setCols(curve_cpu_geom.cols);
+
+			// Bind and draw the curve
+			curve_gpu_geom.bind();
+			glDrawArrays(GL_LINE_STRIP, 0, curve_cpu_geom.verts.size());
+		/* ----------------- Curve Rendering End -----------------*/
+
+
 		//------------------------------------------
 		glDisable(GL_FRAMEBUFFER_SRGB); // disable sRGB for things like imgui
 		panel.render();
