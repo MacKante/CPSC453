@@ -23,7 +23,7 @@
 #define WINDOW_HEIGHT 800
 #define WINDOW_WIDTH 800
 
-#define POINT_PROXIMITY_THRESHOLD 0.1f
+#define POINT_PROXIMITY_THRESHOLD 0.08f
 
 enum CURVE_TYPE {
 	BEZIER,
@@ -44,7 +44,8 @@ enum POINT_MODE {
 /*------------------------------------ Structs ------------------------------------*/
 struct CurveEditorCallbackInput
 {
-	glm::vec3 cursorPos = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 cursorPos = glm::vec3(0.0f, 0.0f, 0.5f);
+	int scrollWheel = 0;
 	bool mousePress = false;
 	enum CURVE_TYPE curveType = BEZIER;
 };
@@ -54,10 +55,22 @@ struct CurveEditorPanelInput
 	enum CURVE_TYPE curveType = BEZIER;
 	enum PROGRAM_MODE programMode = CURVE_EDITOR;
 	enum POINT_MODE pointMode = SELECT_MODE;
+
+	bool renderControlPoints = true;
+	bool renderControlPointLines = true;
+
 };
 /*--------------------------------- Global Static ---------------------------------*/
 static bool letGo;
 static bool resetPoints = false;
+
+static glm::vec3 cameraPosition(0.0f, 0.0f, 3.0f);
+
+glm::mat4 projection = glm::perspective(
+	glm::radians(45.0f),
+	static_cast<float>(WINDOW_WIDTH / WINDOW_HEIGHT),
+	0.1f, 100.0f
+);
 
 
 class CurveEditorCallBack : public CallbackInterface {
@@ -205,6 +218,12 @@ public:
 		ImGui::Combo("Point Mode Select", &pointComboSelection, pointOptions, IM_ARRAYSIZE(pointOptions));
 		input.pointMode = static_cast<POINT_MODE>(pointComboSelection);
 
+		// Checkbox
+		ImGui::Checkbox("Render Control Points", &input.renderControlPoints);
+
+		// Checkbox
+		ImGui::Checkbox("Render Control Point Lines", &input.renderControlPointLines);
+
 		if (ImGui::Button("Reset Points")) {
 			resetPoints = true;
 		}
@@ -328,6 +347,7 @@ std::vector<glm::vec3> chaikinCurveSubdivision(std::vector<glm::vec3>& coarsePoi
 	return chaikinCurveSubdivision(F, iterations - 1);
 }
 
+
 /*--------------------------- Extra Functions ---------------------------*/
 int selectControlPoint(std::vector<glm::vec3>& controlPoints, glm::vec3 cursorPos, bool mousePress) {
 	if (!mousePress || controlPoints.empty()) {
@@ -416,7 +436,15 @@ int main() {
 		// Use the default shader (can use different ones for different objects)
 		shader_program_default.use();
 
-
+		/*----------------------------- View Camera -----------------------------*/
+		glm::mat4 view = glm::lookAt( cameraPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f) );
+		//glm::mat4 viewProjection = projection * view;
+		glm::mat4 viewProjection(1.0f);
+		
+		glUniformMatrix4fv(
+			glGetUniformLocation(shader_program_default.getProgram(), "transformationMatrix"),
+			1, GL_FALSE, glm::value_ptr(viewProjection)
+		);
 
 		/*------------------------ Control points  ------------------------*/
 		// Reset points
@@ -435,7 +463,7 @@ int main() {
 			}
 			break;
 		case INSERT_MODE:
-			if (callbackInput.mousePress && letGo) {
+			if (callbackInput.mousePress && letGo && (cp_positions_vector.size() < 12)) {
 				glm::vec3 newPoint = callbackInput.cursorPos;
 				cp_positions_vector.push_back(newPoint);
 				letGo = false;
@@ -475,25 +503,28 @@ int main() {
 		// Only render if there are points ---------------------------------------------------
 		if (!cp_positions_vector.empty()) {
 			// Control Point ----------------
-			cp_point_cpu.verts = cp_positions_vector;
-			cp_point_cpu.cols = std::vector<glm::vec3>(cp_point_cpu.verts.size(), cp_point_colour);
-			cp_point_gpu.setVerts(cp_point_cpu.verts);
-			cp_point_gpu.setCols(cp_point_cpu.cols);
+			if (panelInput.renderControlPoints) {
+				cp_point_cpu.verts = cp_positions_vector;
+				cp_point_cpu.cols = std::vector<glm::vec3>(cp_point_cpu.verts.size(), cp_point_colour);
+				cp_point_gpu.setVerts(cp_point_cpu.verts);
+				cp_point_gpu.setCols(cp_point_cpu.cols);
 
-			cp_point_gpu.bind();
-			glPointSize(15.f);
-			glDrawArrays(GL_POINTS, 0, cp_point_cpu.verts.size());
+				cp_point_gpu.bind();
+				glPointSize(15.f);
+				glDrawArrays(GL_POINTS, 0, cp_point_cpu.verts.size());
+			}
 
 			// Control Point Line ------------
-			cp_line_cpu.verts = cp_positions_vector; // We are using GL_LINE_STRIP (change this if you want to use GL_LINES)
-			cp_line_cpu.cols = std::vector<glm::vec3>(cp_point_cpu.verts.size(), cp_line_colour);
-			cp_line_gpu.setVerts(cp_line_cpu.verts);
-			cp_line_gpu.setCols(cp_line_cpu.cols);
+			if (panelInput.renderControlPointLines) {
+				cp_line_cpu.verts = cp_positions_vector; // We are using GL_LINE_STRIP (change this if you want to use GL_LINES)
+				cp_line_cpu.cols = std::vector<glm::vec3>(cp_point_cpu.verts.size(), cp_line_colour);
+				cp_line_gpu.setVerts(cp_line_cpu.verts);
+				cp_line_gpu.setCols(cp_line_cpu.cols);
 
-			cp_line_gpu.bind();
-			//glLineWidth(10.f); //May do nothing (like it does on my computer): https://community.khronos.org/t/3-0-wide-lines-deprecated/55426
-			glDrawArrays(GL_LINE_STRIP, 0, cp_line_cpu.verts.size());
-
+				cp_line_gpu.bind();
+				//glLineWidth(10.f); //May do nothing (like it does on my computer): https://community.khronos.org/t/3-0-wide-lines-deprecated/55426
+				glDrawArrays(GL_LINE_STRIP, 0, cp_line_cpu.verts.size());
+			}
 
 			// Update CPU and GPU geometries
 			curve_cpu_geom.verts = curve_points;

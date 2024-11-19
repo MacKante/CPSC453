@@ -31,6 +31,8 @@ public:
 		return programID;
 	}
 
+	GLuint getProgram();
+
 private:
 	ShaderProgramHandle programID;
 
