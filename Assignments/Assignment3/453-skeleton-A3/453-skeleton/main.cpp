@@ -64,7 +64,7 @@ struct CurveEditorPanelInput
 static bool letGo;
 static bool resetPoints = false;
 
-static glm::vec3 cameraPosition(0.0f, 0.0f, 3.0f);
+static glm::vec3 cameraPosition(5.0f, 5.0f, 5.0f);
 
 glm::mat4 projection = glm::perspective(
 	glm::radians(45.0f),
@@ -163,7 +163,6 @@ public:
 		// Initialize options for the program combo box
 		programOptions[0] = "Curve Editor";
 		programOptions[1] = "Orbit Viewer";
-		programOptions[2] = "Option 3";
 
 		// Initialize options for the point mode combo box
 		pointOptions[0] = "Select Mode";
@@ -191,7 +190,8 @@ public:
 
 		// Combo box
 		ImGui::Combo("Program Select", &programComboSelection, programOptions, IM_ARRAYSIZE(programOptions));
-		
+		input.programMode = static_cast<PROGRAM_MODE>(programComboSelection);
+
 		// Add spacing ------------------------------
 		ImGuiAddSpace();
 
@@ -282,14 +282,15 @@ public:
 
 	/*-------------------------------------------------------*/
 	enum CURVE_TYPE getCurveType() { return curveType; }
-	CurveEditorPanelInput getCurveEditorPanelInput() { return input;  }
+
+	CurveEditorPanelInput getCurveEditorPanelInput() { return input; }
 
 private:
 	float colorValue[3];  // Array for RGB color values
 
 	enum CURVE_TYPE curveType;
 
-	const char* programOptions[3]; // Options for the program combo box
+	const char* programOptions[2]; // Options for the program combo box
 	int programComboSelection;
 
 	const char* pointOptions[3]; // Options for the point combo box
@@ -437,9 +438,17 @@ int main() {
 		shader_program_default.use();
 
 		/*----------------------------- View Camera -----------------------------*/
-		glm::mat4 view = glm::lookAt( cameraPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f) );
-		//glm::mat4 viewProjection = projection * view;
-		glm::mat4 viewProjection(1.0f);
+		glm::mat4 viewProjection;
+
+		switch (panelInput.programMode) {
+		case CURVE_EDITOR:
+			viewProjection = glm::mat4(1.0f);
+			break;
+		case ORBIT_VIEWER:
+			glm::mat4 view = glm::lookAt(cameraPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+			viewProjection = projection * view;
+			break;
+		}
 		
 		glUniformMatrix4fv(
 			glGetUniformLocation(shader_program_default.getProgram(), "transformationMatrix"),
@@ -503,7 +512,7 @@ int main() {
 		// Only render if there are points ---------------------------------------------------
 		if (!cp_positions_vector.empty()) {
 			// Control Point ----------------
-			if (panelInput.renderControlPoints) {
+			if (panelInput.renderControlPoints) { // Optional: render/unrender cp
 				cp_point_cpu.verts = cp_positions_vector;
 				cp_point_cpu.cols = std::vector<glm::vec3>(cp_point_cpu.verts.size(), cp_point_colour);
 				cp_point_gpu.setVerts(cp_point_cpu.verts);
@@ -515,7 +524,7 @@ int main() {
 			}
 
 			// Control Point Line ------------
-			if (panelInput.renderControlPointLines) {
+			if (panelInput.renderControlPointLines) { // Optional: render/unrender cp lines
 				cp_line_cpu.verts = cp_positions_vector; // We are using GL_LINE_STRIP (change this if you want to use GL_LINES)
 				cp_line_cpu.cols = std::vector<glm::vec3>(cp_point_cpu.verts.size(), cp_line_colour);
 				cp_line_gpu.setVerts(cp_line_cpu.verts);
