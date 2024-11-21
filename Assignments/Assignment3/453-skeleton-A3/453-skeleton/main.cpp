@@ -6,6 +6,8 @@
 #include <vector>
 #include <limits>
 #include <functional>
+#include "cmath"
+#include "corecrt_math_defines.h"
 
 #include "Geometry.h"
 #include "GLDebug.h"
@@ -27,12 +29,14 @@
 
 enum CURVE_TYPE {
 	BEZIER,
-	B_SPLINE
+	B_SPLINE,
 };
 
 enum PROGRAM_MODE {
 	CURVE_EDITOR,
-	ORBIT_VIEWER
+	ORBIT_VIEWER,
+	SURFACE_OF_REVOLUTION,
+	TENSOR
 };
 
 enum POINT_MODE {
@@ -47,7 +51,6 @@ struct CurveEditorCallbackInput
 	glm::vec3 cursorPos = glm::vec3(0.0f, 0.0f, 0.5f);
 	int scrollWheel = 0;
 	bool mousePress = false;
-	enum CURVE_TYPE curveType = BEZIER;
 };
 CurveEditorCallbackInput curveEditorInput;
 
@@ -60,6 +63,7 @@ struct CurveEditorPanelInput
 	bool renderControlPoints = true;
 	bool renderControlPointLines = true;
 
+	bool wireframeMode = true;
 };
 CurveEditorPanelInput curveEditorPanelInput;
 /*--------------------------------- Global Static ---------------------------------*/
@@ -81,15 +85,6 @@ public:
 
 	virtual void keyCallback(int key, int scancode, int action, int mods) override {
 		Log::info("KeyCallback: key={}, action={}", key, action);
-
-		if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-			if (curveEditorInput.curveType == BEZIER) {
-				curveEditorInput.curveType = B_SPLINE;
-			}
-			else {
-				curveEditorInput.curveType = BEZIER;
-			}
-		}
 	}
 
 	virtual void mouseButtonCallback(int button, int action, int mods) override {
@@ -135,7 +130,7 @@ class TurnTable3DViewerCallBack : public CallbackInterface {
 
 public:
 	TurnTable3DViewerCallBack()
-		: dragCamera(false), lastCursorPos(0.0f), yaw(90.0f), pitch(0.0f), distance(2.0f), sensitivity(0.1f) {}
+		: dragCamera(false), lastCursorPos(0.0f), yaw(90.0f), pitch(0.0f), distance(3.0f), sensitivity(0.1f) {}
 
 	virtual void keyCallback(int key, int scancode, int action, int mods) {}
 	virtual void mouseButtonCallback(int button, int action, int mods) {
@@ -173,7 +168,7 @@ public:
 	virtual void scrollCallback(double xoffset, double yoffset) {
 		// Adjust the distance (radius) using the scroll wheel
 		distance -= yoffset * sensitivity;
-		distance = glm::clamp(distance, 1.0f, 50.0f); // Prevent zooming too close or too far
+		distance = glm::clamp(distance, 0.1f, 10.0f); // Prevent zooming too close or too far
 
 		// Convert spherical coordinates to Cartesian coordinates
 		float x = distance * cos(glm::radians(pitch)) * cos(glm::radians(yaw));
@@ -184,7 +179,6 @@ public:
 
 	}
 	virtual void windowSizeCallback(int width, int height) {
-
 		// The CallbackInterface::windowSizeCallback will call glViewport for us
 		CallbackInterface::windowSizeCallback(width, height);
 	}
@@ -194,11 +188,11 @@ public:
 	}
 
 	void resetCameraPosition() {
-		cameraPosition = glm::vec3(0.0f, 0.0f, 2.0f);
+		cameraPosition = glm::vec3(0.0f, 0.0f, 3.0f);
 		lastCursorPos = glm::vec2(0.0f);
 		yaw = 90.0f;
 		pitch = 0.0f;
-		distance = 2.0f;
+		distance = 3.0f;
 	}
 
 private:
@@ -210,7 +204,7 @@ private:
 	float distance;   // Distance of camera from the origin
 
 	glm::vec2 lastCursorPos = glm::vec2(0.0f, 0.0f);
-	glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, 2.0f);
+	glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, 3.0f);
 };
 
 
@@ -222,6 +216,7 @@ public:
 		// Initialize options for the program combo box
 		programOptions[0] = "Curve Editor";
 		programOptions[1] = "Orbit Viewer";
+		programOptions[2] = "Surface of Revolution";
 
 		// Initialize options for the point mode combo box
 		pointOptions[0] = "Select Mode";
@@ -251,31 +246,34 @@ public:
 		ImGui::Combo("Program Select", &programComboSelection, programOptions, IM_ARRAYSIZE(programOptions));
 		curveEditorPanelInput.programMode = static_cast<PROGRAM_MODE>(programComboSelection);
 
-		// Add spacing ------------------------------
-		ImGuiAddSpace();
-
 		// Curve select buttons
-		ImGui::Text("Select Curve Type:");
-		ImGui::SameLine();
-		if (ImGui::Button("Bezier")) {
-			curveEditorPanelInput.curveType = BEZIER;
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("B-Spline")) {
-			curveEditorPanelInput.curveType = B_SPLINE;
-		}
-		if (curveEditorPanelInput.curveType == BEZIER) {
-			ImGui::Text("Current Type: Bezier Curve");
-		}
-		else {
-			ImGui::Text("Current Type: B-Spline Curve");
+		if ((curveEditorPanelInput.programMode == CURVE_EDITOR) || (curveEditorPanelInput.programMode == ORBIT_VIEWER)) {
+			// Add spacing ------------------------------
+			ImGuiAddSpace();
+			ImGui::Text("Select Curve Type:");
+			ImGui::SameLine();
+			if (ImGui::Button("Bezier")) {
+				curveEditorPanelInput.curveType = BEZIER;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("B-Spline")) {
+				curveEditorPanelInput.curveType = B_SPLINE;
+			}
+			if (curveEditorPanelInput.curveType == BEZIER) {
+				ImGui::Text("Current Type: Bezier Curve");
+			}
+			else {
+				ImGui::Text("Current Type: B-Spline Curve");
+			}
 		}
 
-		// Add spacing ------------------------------
 		ImGuiAddSpace();
 
-		ImGui::Combo("Point Mode Select", &pointComboSelection, pointOptions, IM_ARRAYSIZE(pointOptions));
-		curveEditorPanelInput.pointMode = static_cast<POINT_MODE>(pointComboSelection);
+		if (curveEditorPanelInput.programMode == CURVE_EDITOR) {
+			// Add spacing ------------------------------
+			ImGui::Combo("Point Mode Select", &pointComboSelection, pointOptions, IM_ARRAYSIZE(pointOptions));
+			curveEditorPanelInput.pointMode = static_cast<POINT_MODE>(pointComboSelection);
+		}
 
 		// Checkbox
 		ImGui::Checkbox("Render Control Points", &curveEditorPanelInput.renderControlPoints);
@@ -283,8 +281,15 @@ public:
 		// Checkbox
 		ImGui::Checkbox("Render Control Point Lines", &curveEditorPanelInput.renderControlPointLines);
 
-		if (ImGui::Button("Reset Points")) {
-			resetPoints = true;
+		if (curveEditorPanelInput.programMode == CURVE_EDITOR) {
+			// Reset Points Button
+			if (ImGui::Button("Reset Points")) {
+				resetPoints = true;
+			}
+		}
+		else if (curveEditorPanelInput.programMode == SURFACE_OF_REVOLUTION) {
+			// Checkbox
+			ImGui::Checkbox("Wireframe Mode", &curveEditorPanelInput.wireframeMode);
 		}
 
 		// Add spacing ------------------------------
@@ -314,7 +319,7 @@ private:
 
 	enum CURVE_TYPE curveType;
 
-	const char* programOptions[2]; // Options for the program combo box
+	const char* programOptions[3]; // Options for the program combo box
 	int programComboSelection;
 
 	const char* pointOptions[3]; // Options for the point combo box
@@ -369,6 +374,39 @@ std::vector<glm::vec3> chaikinCurveSubdivision(std::vector<glm::vec3>& coarsePoi
 	return chaikinCurveSubdivision(F, iterations - 1);
 }
 
+/*-------------------- Generate Surface of Revolution -------------------*/
+std::vector<glm::vec3> surfaceOfRevolution(const std::vector<glm::vec3>& curvePoints, int n_slices = 21) {
+	std::vector<glm::vec3> surface_verts;
+
+	// Angle between each curve
+	float angle_step = 2.0f * M_PI / n_slices;
+
+	// For each curve point, create triangles with adjacent curve points
+	for (int i = 0; i < curvePoints.size() - 1; i++) {
+		glm::vec3 p1 = curvePoints[i];
+		glm::vec3 p2 = curvePoints[i + 1];
+
+		for (int j = 0; j < n_slices; j++) {
+			float angle = j * angle_step;
+			float next_angle = (j + 1) * angle_step;
+
+			glm::vec3 v1(p1.x * cos(angle), p1.y, p1.x * sin(angle));
+			glm::vec3 v2(p2.x * cos(angle), p2.y, p2.x * sin(angle));
+			glm::vec3 v3(p2.x * cos(next_angle), p2.y, p2.x * sin(next_angle));
+			glm::vec3 v4(p1.x * cos(next_angle), p1.y, p1.x * sin(next_angle));
+
+			surface_verts.push_back(v1);
+			surface_verts.push_back(v2);
+			surface_verts.push_back(v3);
+			surface_verts.push_back(v1);
+			surface_verts.push_back(v3);
+			surface_verts.push_back(v4);
+		}
+
+	}
+
+	return surface_verts;
+}
 
 /*--------------------------- Extra Functions ---------------------------*/
 int selectControlPoint(std::vector<glm::vec3>& controlPoints, glm::vec3 cursorPos, bool mousePress) {
@@ -438,14 +476,19 @@ int main() {
 	CPU_Geometry curve_cpu_geom;
 	GPU_Geometry curve_gpu_geom;	
 
+	// Surface geometry
+	CPU_Geometry surface_cpu_geom;
+	GPU_Geometry surface_gpu_geom;
+
 
 	while (!window.shouldClose()) {
 
+		// Use callback for either 2D editor or 3d viewer
 		switch (curveEditorPanelInput.programMode) {
 		case CURVE_EDITOR:
 			window.setCallbacks(curve_editor_callback);
 			break;
-		case ORBIT_VIEWER:
+		default:
 			window.setCallbacks(turn_table_3D_viewer_callback);
 			break;
 		}
@@ -479,13 +522,19 @@ int main() {
 			turn_table_3D_viewer_callback->resetCameraPosition();
 		}
 
-
 		// View Projection Matrix
 		glm::mat4 viewProjection;
 
 		// selected Control point initialized to -1
 		int selectedControlPoint =  -1;
 
+		// Curve points
+		std::vector<glm::vec3> curve_points;
+
+		// Surface of revolution verts
+		std::vector<glm::vec3> surface_verts;
+
+		/*----------------------------------------------------------- 3D View or 2D Point Editor-----------------------------------------------------------*/
 		switch (panelInput.programMode) {
 		case CURVE_EDITOR:
 			// Default view projection
@@ -494,7 +543,6 @@ int main() {
 			/*------------------------ Control points  ------------------------*/
 			// Select a control point
 			selectedControlPoint = selectControlPoint(cp_positions_vector, callbackInput.cursorPos, callbackInput.mousePress);
-
 			switch (panelInput.pointMode) {
 			case SELECT_MODE:
 				if (selectedControlPoint != -1) {
@@ -518,7 +566,7 @@ int main() {
 			}
 			/*---------------------- Control points end ----------------------*/
 			break;
-		case ORBIT_VIEWER:
+		default:
 			glm::vec3 camPos = turn_table_3D_viewer_callback->getCameraPosition();
 			glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 			viewProjection = projection * view;
@@ -531,27 +579,58 @@ int main() {
 			1, GL_FALSE, glm::value_ptr(viewProjection)
 		);
 
+		/*----------------------------------------------------------- Scene Type -----------------------------------------------------------*/
+		switch (panelInput.programMode) {
+		case SURFACE_OF_REVOLUTION:
+			// Calculate surface points
+			surface_cpu_geom.verts.clear();
+			surface_cpu_geom.verts = surfaceOfRevolution(chaikinCurveSubdivision(cp_positions_vector, 1));
+			surface_cpu_geom.cols = std::vector<glm::vec3>(surface_cpu_geom.verts.size(), glm::vec3(0.f, 0.f, 0.f));
 
-		/* ----------------- Curve -----------------*/
-		// Curve points
-		std::vector<glm::vec3> curve_points;
-		// Generate points on the curve
-		if (!cp_positions_vector.empty()) {
-			switch (panelInput.curveType) {
-			case BEZIER:
-				for (float u = 0.0f; u < 1.0f; u += 0.01f) {
-					glm::vec3 curve_point = deCasteljau(cp_positions_vector, u);
-					curve_points.push_back(curve_point);
-				}
-				break;
-			case B_SPLINE:
-				curve_points = chaikinCurveSubdivision(cp_positions_vector);
-				break;
+			// Render Surface
+			surface_gpu_geom.setVerts(surface_cpu_geom.verts);
+			surface_gpu_geom.setCols(surface_cpu_geom.cols);
+
+			// Wireframe mode on/off
+			if (panelInput.wireframeMode) {
+				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 			}
-		}
-		/* ----------------- Curve End -----------------*/
+			else {
+				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			}
+			surface_gpu_geom.bind();
+			glDrawArrays(GL_TRIANGLES, 0, surface_cpu_geom.verts.size());
+			break;
+		default:
+			// Calculate curve points
+			if (!cp_positions_vector.empty()) {
+				switch (panelInput.curveType) {
+				case BEZIER:
+					for (float u = 0.0f; u < 1.0f; u += 0.01f) {
+						glm::vec3 curve_point = deCasteljau(cp_positions_vector, u);
+						curve_points.push_back(curve_point);
+					}
+					break;
+				case B_SPLINE:
+					curve_points = chaikinCurveSubdivision(cp_positions_vector);
+					break;
+				}
+			}
 
-		// Only render if there are points ---------------------------------------------------
+			// Render Curve
+			curve_cpu_geom.verts = curve_points;
+			curve_cpu_geom.cols = std::vector<glm::vec3>(curve_points.size(), { 0.0f, 0.0f, 0.0f }); // black curve line
+			curve_gpu_geom.setVerts(curve_cpu_geom.verts);
+			curve_gpu_geom.setCols(curve_cpu_geom.cols);
+			curve_gpu_geom.bind();
+			glDrawArrays(GL_LINE_STRIP, 0, curve_cpu_geom.verts.size());
+			break;
+
+			break;
+		}
+
+
+		/*------------------------------------------------------- Control Points and Control Point Lines -------------------------------------------------------*/
 		if (!cp_positions_vector.empty()) {
 			// Control Point ----------------
 			if (panelInput.renderControlPoints) { // Optional: render/unrender cp
@@ -576,16 +655,6 @@ int main() {
 				//glLineWidth(10.f); //May do nothing (like it does on my computer): https://community.khronos.org/t/3-0-wide-lines-deprecated/55426
 				glDrawArrays(GL_LINE_STRIP, 0, cp_line_cpu.verts.size());
 			}
-
-			// Update CPU and GPU geometries
-			curve_cpu_geom.verts = curve_points;
-			curve_cpu_geom.cols = std::vector<glm::vec3>(curve_points.size(), { 0.0f, 0.0f, 0.0f }); // black curve line
-			curve_gpu_geom.setVerts(curve_cpu_geom.verts);
-			curve_gpu_geom.setCols(curve_cpu_geom.cols);
-
-			// Bind and draw the curve
-			curve_gpu_geom.bind();
-			glDrawArrays(GL_LINE_STRIP, 0, curve_cpu_geom.verts.size());
 		}
 
 		//------------------------------------------
