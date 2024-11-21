@@ -66,12 +66,11 @@ static bool resetPoints = false;
 
 static glm::vec3 cameraPosition(5.0f, 5.0f, 5.0f);
 
-glm::mat4 projection = glm::perspective(
+const glm::mat4 projection = glm::perspective(
 	glm::radians(45.0f),
 	static_cast<float>(WINDOW_WIDTH / WINDOW_HEIGHT),
 	0.1f, 100.0f
 );
-
 
 class CurveEditorCallBack : public CallbackInterface {
 public:
@@ -91,8 +90,6 @@ public:
 	}
 
 	virtual void mouseButtonCallback(int button, int action, int mods) override {
-		
-
 		if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
 			input.mousePress = true;
 		}
@@ -111,7 +108,6 @@ public:
 		glm::vec2 scaledToZeroOne = shiftedVec / glm::vec2(WINDOW_WIDTH, WINDOW_HEIGHT);
 		glm::vec2 flippedY = glm::vec2(scaledToZeroOne.x, 1.0f - scaledToZeroOne.y);
 		glm::vec2 final = flippedY * 2.0f - glm::vec2(1.0f, 1.0f);
-
 		input.cursorPos = glm::vec3(final, 0.0f);
 
 		// Log::info("CursorPosCallback: xpos={}, ypos={}", input.cursorPos.x, input.cursorPos.y);
@@ -135,15 +131,35 @@ private:
 };
 
 // Can swap the callback instead of maintaining a state machine
-/*
+
 class TurnTable3DViewerCallBack : public CallbackInterface {
 
 public:
-	TurnTable3DViewerCallBack() {}
+	TurnTable3DViewerCallBack()
+		: yaw(-90.0f), pitch(0.0f), sensitivity(0.1f), dragCamera(false),
+		lastX(WINDOW_WIDTH / 2.0f), lastY(WINDOW_HEIGHT / 2.0f) {}
 
 	virtual void keyCallback(int key, int scancode, int action, int mods) {}
-	virtual void mouseButtonCallback(int button, int action, int mods) {}
-	virtual void cursorPosCallback(double xpos, double ypos) {}
+	virtual void mouseButtonCallback(int button, int action, int mods) {
+		if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+			dragCamera = true;
+		}
+		else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+			dragCamera = false;
+			
+		}
+	}
+	virtual void cursorPosCallback(double xpos, double ypos) {
+		// Calculate cursor position in -1 to 1 range
+		glm::vec2 startingVec(xpos, ypos);
+		glm::vec2 shiftedVec = startingVec + glm::vec2(0.5f, 0.5f);
+		glm::vec2 scaledToZeroOne = shiftedVec / glm::vec2(WINDOW_WIDTH, WINDOW_HEIGHT);
+		glm::vec2 flippedY = glm::vec2(scaledToZeroOne.x, 1.0f - scaledToZeroOne.y);
+		glm::vec2 final = flippedY * 2.0f - glm::vec2(1.0f, 1.0f);
+
+		// Final calculated cursor pos as vec3
+		glm::vec3 cursorPos = glm::vec3(final, 0.0f);
+	}
 	virtual void scrollCallback(double xoffset, double yoffset) {}
 	virtual void windowSizeCallback(int width, int height) {
 
@@ -151,9 +167,17 @@ public:
 		CallbackInterface::windowSizeCallback(width, height);
 	}
 private:
+	bool dragCamera;
+	float yaw, pitch;
+	float distance;
 
+	float sensitivity;
+	float lastX, lastY;
+	glm::vec2 lastCursorPos;
+	glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, 5.0f);
+	glm::vec3 cameraDirection = glm::vec3(0.0f, 0.0f, -1.0f);
 };
-*/
+
 
 class CurveEditorPanelRenderer : public PanelRendererInterface {
 public:
