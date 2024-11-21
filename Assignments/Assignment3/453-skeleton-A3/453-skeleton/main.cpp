@@ -49,6 +49,7 @@ struct CurveEditorCallbackInput
 	bool mousePress = false;
 	enum CURVE_TYPE curveType = BEZIER;
 };
+CurveEditorCallbackInput curveEditorInput;
 
 struct CurveEditorPanelInput
 {
@@ -60,9 +61,11 @@ struct CurveEditorPanelInput
 	bool renderControlPointLines = true;
 
 };
+CurveEditorPanelInput curveEditorPanelInput;
 /*--------------------------------- Global Static ---------------------------------*/
 static bool letGo;
 static bool resetPoints = false;
+static bool resetCamera = false;
 
 static glm::vec3 cameraPosition(5.0f, 5.0f, 5.0f);
 
@@ -80,21 +83,21 @@ public:
 		Log::info("KeyCallback: key={}, action={}", key, action);
 
 		if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-			if (input.curveType == BEZIER) {
-				input.curveType = B_SPLINE;
+			if (curveEditorInput.curveType == BEZIER) {
+				curveEditorInput.curveType = B_SPLINE;
 			}
 			else {
-				input.curveType = BEZIER;
+				curveEditorInput.curveType = BEZIER;
 			}
 		}
 	}
 
 	virtual void mouseButtonCallback(int button, int action, int mods) override {
 		if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-			input.mousePress = true;
+			curveEditorInput.mousePress = true;
 		}
 		else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
-			input.mousePress = false;
+			curveEditorInput.mousePress = false;
 			letGo = true;
 		}
 
@@ -108,7 +111,7 @@ public:
 		glm::vec2 scaledToZeroOne = shiftedVec / glm::vec2(WINDOW_WIDTH, WINDOW_HEIGHT);
 		glm::vec2 flippedY = glm::vec2(scaledToZeroOne.x, 1.0f - scaledToZeroOne.y);
 		glm::vec2 final = flippedY * 2.0f - glm::vec2(1.0f, 1.0f);
-		input.cursorPos = glm::vec3(final, 0.0f);
+		curveEditorInput.cursorPos = glm::vec3(final, 0.0f);
 
 		// Log::info("CursorPosCallback: xpos={}, ypos={}", input.cursorPos.x, input.cursorPos.y);
 	}
@@ -122,12 +125,8 @@ public:
 		CallbackInterface::windowSizeCallback(width, height); // Important, calls glViewport(0, 0, width, height);
 	}
 
-	CurveEditorCallbackInput getCurveEditorCallbackInput() {
-		return input;
-	}
-
 private:
-	CurveEditorCallbackInput input;
+	
 };
 
 // Can swap the callback instead of maintaining a state machine
@@ -136,8 +135,7 @@ class TurnTable3DViewerCallBack : public CallbackInterface {
 
 public:
 	TurnTable3DViewerCallBack()
-		: yaw(-90.0f), pitch(0.0f), sensitivity(0.1f), dragCamera(false),
-		lastX(WINDOW_WIDTH / 2.0f), lastY(WINDOW_HEIGHT / 2.0f) {}
+		: dragCamera(false), lastCursorPos(0.0f), yaw(90.0f), pitch(0.0f), distance(2.0f), sensitivity(0.1f) {}
 
 	virtual void keyCallback(int key, int scancode, int action, int mods) {}
 	virtual void mouseButtonCallback(int button, int action, int mods) {
@@ -146,36 +144,73 @@ public:
 		}
 		else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
 			dragCamera = false;
-			
 		}
 	}
 	virtual void cursorPosCallback(double xpos, double ypos) {
-		// Calculate cursor position in -1 to 1 range
-		glm::vec2 startingVec(xpos, ypos);
-		glm::vec2 shiftedVec = startingVec + glm::vec2(0.5f, 0.5f);
-		glm::vec2 scaledToZeroOne = shiftedVec / glm::vec2(WINDOW_WIDTH, WINDOW_HEIGHT);
-		glm::vec2 flippedY = glm::vec2(scaledToZeroOne.x, 1.0f - scaledToZeroOne.y);
-		glm::vec2 final = flippedY * 2.0f - glm::vec2(1.0f, 1.0f);
+		glm::vec2 currentCursorPos(xpos, ypos);
 
-		// Final calculated cursor pos as vec3
-		glm::vec3 cursorPos = glm::vec3(final, 0.0f);
+		if (dragCamera) {
+			glm::vec2 offset = currentCursorPos - lastCursorPos;
+			offset *= sensitivity;
+
+			// Rotations
+			yaw += offset.x;
+			pitch += offset.y;
+
+			// Clamp pitch to avoid flipping
+			pitch = glm::clamp(pitch, -89.0f, 89.0f);
+
+			// Convert spherical coordinates to Cartesian coordinates
+			float x = distance * cos(glm::radians(pitch)) * cos(glm::radians(yaw));
+			float y = distance * sin(glm::radians(pitch));
+			float z = distance * cos(glm::radians(pitch)) * sin(glm::radians(yaw));
+
+			cameraPosition = glm::vec3(x, y, z);
+		}
+
+		lastCursorPos = currentCursorPos;
 	}
-	virtual void scrollCallback(double xoffset, double yoffset) {}
+	virtual void scrollCallback(double xoffset, double yoffset) {
+		// Adjust the distance (radius) using the scroll wheel
+		distance -= yoffset * sensitivity;
+		distance = glm::clamp(distance, 1.0f, 50.0f); // Prevent zooming too close or too far
+
+		// Convert spherical coordinates to Cartesian coordinates
+		float x = distance * cos(glm::radians(pitch)) * cos(glm::radians(yaw));
+		float y = distance * sin(glm::radians(pitch));
+		float z = distance * cos(glm::radians(pitch)) * sin(glm::radians(yaw));
+
+		cameraPosition = glm::vec3(x, y, z);
+
+	}
 	virtual void windowSizeCallback(int width, int height) {
 
 		// The CallbackInterface::windowSizeCallback will call glViewport for us
 		CallbackInterface::windowSizeCallback(width, height);
 	}
-private:
-	bool dragCamera;
-	float yaw, pitch;
-	float distance;
 
+	glm::vec3 getCameraPosition() {
+		return cameraPosition;
+	}
+
+	void resetCameraPosition() {
+		cameraPosition = glm::vec3(0.0f, 0.0f, 2.0f);
+		lastCursorPos = glm::vec2(0.0f);
+		yaw = 90.0f;
+		pitch = 0.0f;
+		distance = 2.0f;
+	}
+
+private:
+	bool dragCamera = false;
 	float sensitivity;
-	float lastX, lastY;
-	glm::vec2 lastCursorPos;
-	glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, 5.0f);
-	glm::vec3 cameraDirection = glm::vec3(0.0f, 0.0f, -1.0f);
+
+	float yaw;      // X-axis angle
+	float pitch;    // Y-axis angle
+	float distance;   // Distance of camera from the origin
+
+	glm::vec2 lastCursorPos = glm::vec2(0.0f, 0.0f);
+	glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, 2.0f);
 };
 
 
@@ -214,7 +249,7 @@ public:
 
 		// Combo box
 		ImGui::Combo("Program Select", &programComboSelection, programOptions, IM_ARRAYSIZE(programOptions));
-		input.programMode = static_cast<PROGRAM_MODE>(programComboSelection);
+		curveEditorPanelInput.programMode = static_cast<PROGRAM_MODE>(programComboSelection);
 
 		// Add spacing ------------------------------
 		ImGuiAddSpace();
@@ -223,13 +258,13 @@ public:
 		ImGui::Text("Select Curve Type:");
 		ImGui::SameLine();
 		if (ImGui::Button("Bezier")) {
-			input.curveType = BEZIER;
+			curveEditorPanelInput.curveType = BEZIER;
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("B-Spline")) {
-			input.curveType = B_SPLINE;
+			curveEditorPanelInput.curveType = B_SPLINE;
 		}
-		if (input.curveType == BEZIER) {
+		if (curveEditorPanelInput.curveType == BEZIER) {
 			ImGui::Text("Current Type: Bezier Curve");
 		}
 		else {
@@ -240,13 +275,13 @@ public:
 		ImGuiAddSpace();
 
 		ImGui::Combo("Point Mode Select", &pointComboSelection, pointOptions, IM_ARRAYSIZE(pointOptions));
-		input.pointMode = static_cast<POINT_MODE>(pointComboSelection);
+		curveEditorPanelInput.pointMode = static_cast<POINT_MODE>(pointComboSelection);
 
 		// Checkbox
-		ImGui::Checkbox("Render Control Points", &input.renderControlPoints);
+		ImGui::Checkbox("Render Control Points", &curveEditorPanelInput.renderControlPoints);
 
 		// Checkbox
-		ImGui::Checkbox("Render Control Point Lines", &input.renderControlPointLines);
+		ImGui::Checkbox("Render Control Point Lines", &curveEditorPanelInput.renderControlPointLines);
 
 		if (ImGui::Button("Reset Points")) {
 			resetPoints = true;
@@ -257,41 +292,8 @@ public:
 
 		// Reset Camera
 		if (ImGui::Button("Reset Camera")) {
-			// TODO
+			resetCamera = true;
 		}
-	
-		
-		/* Old stuff
-		// Scrollable block
-		ImGui::TextWrapped("Scrollable Block:");
-		ImGui::BeginChild("ScrollableChild", ImVec2(0, 100), true); // Create a scrollable child
-		for (int i = 0; i < 20; i++) {
-			ImGui::Text("Item %d", i);
-		}
-		ImGui::EndChild();
-
-		// Float slider
-		ImGui::SliderFloat("Float Slider", &sliderValue, 0.0f, 100.0f, "Slider Value: %.3f");
-
-		// Float drag
-		ImGui::DragFloat("Float Drag", &dragValue, 0.1f, 0.0f, 100.0f, "Drag Value: %.3f");
-
-		// Float input
-		ImGui::InputFloat("Float Input", &inputValue, 0.1f, 1.0f, "Input Value: %.3f");
-
-		// Checkbox
-		ImGui::Checkbox("Enable Feature", &checkboxValue);
-		ImGui::Text("Feature Enabled: %s", checkboxValue ? "Yes" : "No");
-
-		// Combo box
-		ImGui::Combo("Select an Option", &comboSelection, options, IM_ARRAYSIZE(options));
-		ImGui::Text("Selected: %s", options[comboSelection]);
-
-		// Displaying current values
-		ImGui::Text("Slider Value: %.3f", sliderValue);
-		ImGui::Text("Drag Value: %.3f", dragValue);
-		ImGui::Text("Input Value: %.3f", inputValue);
-		*/
 	}
 
 	glm::vec3 getColor() const {
@@ -307,8 +309,6 @@ public:
 	/*-------------------------------------------------------*/
 	enum CURVE_TYPE getCurveType() { return curveType; }
 
-	CurveEditorPanelInput getCurveEditorPanelInput() { return input; }
-
 private:
 	float colorValue[3];  // Array for RGB color values
 
@@ -319,9 +319,6 @@ private:
 
 	const char* pointOptions[3]; // Options for the point combo box
 	int pointComboSelection;
-
-	CurveEditorPanelInput input;
-
 };
 
 /*------------------------ de Casteljau Algorithm -----------------------*/
@@ -403,14 +400,13 @@ int main() {
 
 	// CALLBACKS
 	auto curve_editor_callback = std::make_shared<CurveEditorCallBack>();
-	//auto turn_table_3D_viewer_callback = std::make_shared<TurnTable3DViewerCallBack>();
-
+	auto turn_table_3D_viewer_callback = std::make_shared<TurnTable3DViewerCallBack>();
 	auto curve_editor_panel_renderer = std::make_shared<CurveEditorPanelRenderer>();
 
 	//Set callback to window
-	window.setCallbacks(curve_editor_callback);
+	// window.setCallbacks(curve_editor_callback);
 	// Can swap the callback instead of maintaining a state machine
-	//window.setCallbacks(turn_table_3D_viewer_callback);
+	// window.setCallbacks(turn_table_3D_viewer_callback);
 
 	//Panel inputs
 	panel.setPanelRenderer(curve_editor_panel_renderer);
@@ -444,9 +440,19 @@ int main() {
 
 
 	while (!window.shouldClose()) {
+
+		switch (curveEditorPanelInput.programMode) {
+		case CURVE_EDITOR:
+			window.setCallbacks(curve_editor_callback);
+			break;
+		case ORBIT_VIEWER:
+			window.setCallbacks(turn_table_3D_viewer_callback);
+			break;
+		}
+
 		glfwPollEvents();
-		CurveEditorCallbackInput callbackInput = curve_editor_callback->getCurveEditorCallbackInput();
-		CurveEditorPanelInput panelInput = curve_editor_panel_renderer->getCurveEditorPanelInput();
+		CurveEditorPanelInput panelInput = curveEditorPanelInput;
+		CurveEditorCallbackInput callbackInput = curveEditorInput;
 		glm::vec3 background_colour = curve_editor_panel_renderer->getColor();
 
 		//------------------------------------------
@@ -461,62 +467,74 @@ int main() {
 		// Use the default shader (can use different ones for different objects)
 		shader_program_default.use();
 
-		/*----------------------------- View Camera -----------------------------*/
-		glm::mat4 viewProjection;
-
-		switch (panelInput.programMode) {
-		case CURVE_EDITOR:
-			viewProjection = glm::mat4(1.0f);
-			break;
-		case ORBIT_VIEWER:
-			glm::mat4 view = glm::lookAt(cameraPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-			viewProjection = projection * view;
-			break;
-		}
-		
-		glUniformMatrix4fv(
-			glGetUniformLocation(shader_program_default.getProgram(), "transformationMatrix"),
-			1, GL_FALSE, glm::value_ptr(viewProjection)
-		);
-
-		/*------------------------ Control points  ------------------------*/
 		// Reset points
 		if (resetPoints) {
 			resetPoints = false;
 			cp_positions_vector.clear();
 		}
 
-		// Select a control point
-		int selectedControlPoint = selectControlPoint(cp_positions_vector, callbackInput.cursorPos, callbackInput.mousePress);
+		// Reset camera
+		if (resetCamera) {
+			resetCamera = false;
+			turn_table_3D_viewer_callback->resetCameraPosition();
+		}
 
-		switch (panelInput.pointMode) {
-		case SELECT_MODE:
-			if (selectedControlPoint != -1) {
-				cp_positions_vector[selectedControlPoint] = callbackInput.cursorPos;
+
+		// View Projection Matrix
+		glm::mat4 viewProjection;
+
+		// selected Control point initialized to -1
+		int selectedControlPoint =  -1;
+
+		switch (panelInput.programMode) {
+		case CURVE_EDITOR:
+			// Default view projection
+			viewProjection = glm::mat4(1.0f);
+
+			/*------------------------ Control points  ------------------------*/
+			// Select a control point
+			selectedControlPoint = selectControlPoint(cp_positions_vector, callbackInput.cursorPos, callbackInput.mousePress);
+
+			switch (panelInput.pointMode) {
+			case SELECT_MODE:
+				if (selectedControlPoint != -1) {
+					cp_positions_vector[selectedControlPoint] = callbackInput.cursorPos;
+				}
+				break;
+			case INSERT_MODE:
+				if (callbackInput.mousePress && letGo && (cp_positions_vector.size() < 12)) {
+					glm::vec3 newPoint = callbackInput.cursorPos;
+					cp_positions_vector.push_back(newPoint);
+					letGo = false;
+				}
+				break;
+			case DELETE_MODE:
+				if (selectedControlPoint != -1) {
+					cp_positions_vector.erase(cp_positions_vector.begin() + selectedControlPoint);
+				}
+				break;
+			default:
+				break;
 			}
+			/*---------------------- Control points end ----------------------*/
 			break;
-		case INSERT_MODE:
-			if (callbackInput.mousePress && letGo && (cp_positions_vector.size() < 12)) {
-				glm::vec3 newPoint = callbackInput.cursorPos;
-				cp_positions_vector.push_back(newPoint);
-				letGo = false;
-				std::cout << "point added" << std::endl;
-			}
-			break;
-		case DELETE_MODE:
-			if (selectedControlPoint != -1) {
-				cp_positions_vector.erase(cp_positions_vector.begin() + selectedControlPoint);
-			}
-			break;
-		default:
+		case ORBIT_VIEWER:
+			glm::vec3 camPos = turn_table_3D_viewer_callback->getCameraPosition();
+			glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+			viewProjection = projection * view;
 			break;
 		}
-		/*---------------------- Control points end ----------------------*/
+
+		// Send new-projection matrix to vertex shader
+		glUniformMatrix4fv(
+			glGetUniformLocation(shader_program_default.getProgram(), "transformationMatrix"),
+			1, GL_FALSE, glm::value_ptr(viewProjection)
+		);
+
 
 		/* ----------------- Curve -----------------*/
 		// Curve points
 		std::vector<glm::vec3> curve_points;
-
 		// Generate points on the curve
 		if (!cp_positions_vector.empty()) {
 			switch (panelInput.curveType) {
@@ -568,7 +586,6 @@ int main() {
 			// Bind and draw the curve
 			curve_gpu_geom.bind();
 			glDrawArrays(GL_LINE_STRIP, 0, curve_cpu_geom.verts.size());
-
 		}
 
 		//------------------------------------------
