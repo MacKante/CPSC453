@@ -22,8 +22,8 @@
 #include "glm/gtc/type_ptr.hpp"
 
 /*-------------------------------- Macros and Enums --------------------------------*/
-#define WINDOW_HEIGHT 800
-#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 1000
+#define WINDOW_WIDTH 1200
 
 #define POINT_PROXIMITY_THRESHOLD 0.08f
 
@@ -64,6 +64,13 @@ struct CurveEditorPanelInput
 	bool renderControlPointLines = true;
 
 	bool wireframeMode = true;
+
+	int tensorMode = 1;
+
+	int sorSlices = 21;
+	int sorIterations = 5;
+
+	int tensorIterations = 3;
 };
 CurveEditorPanelInput curveEditorPanelInput;
 /*--------------------------------- Global Static ---------------------------------*/
@@ -78,6 +85,22 @@ const glm::mat4 projection = glm::perspective(
 	static_cast<float>(WINDOW_WIDTH / WINDOW_HEIGHT),
 	0.1f, 100.0f
 );
+
+const std::vector<std::vector<glm::vec3>> tensorSurface1 = {
+	{ glm::vec3(-2, 0, -2), glm::vec3(-1, 0, -2), glm::vec3(0,  0, -2), glm::vec3(1, 0, -2), glm::vec3(2, 0, -2) },
+	{ glm::vec3(-2, 0, -1), glm::vec3(-1, 1, -1), glm::vec3(0,  1, -1), glm::vec3(1, 1, -1), glm::vec3(2, 0, -1) },
+	{ glm::vec3(-2, 0,  0), glm::vec3(-1, 1,  0), glm::vec3(0, -1,  0), glm::vec3(1, 1,  0), glm::vec3(2, 0,  0) },
+	{ glm::vec3(-2, 0,  1), glm::vec3(-1, 1,  1), glm::vec3(0,  1,  1), glm::vec3(1, 1,  1), glm::vec3(2, 0,  1) },
+	{ glm::vec3(-2, 0,  2), glm::vec3(-1, 0,  2), glm::vec3(0,  0,  2), glm::vec3(1, 0,  2), glm::vec3(2, 0,  2) }
+};
+
+const std::vector<std::vector<glm::vec3>> tensorSurface2 = {
+	{ glm::vec3(-2, 0.3, -2), glm::vec3(-1, 1.2, -2), glm::vec3(0,  0.8, -2), glm::vec3(1, 0.1, -2), glm::vec3(2, 0.6, -2) },
+	{ glm::vec3(-2, 1.0, -1), glm::vec3(-1, 0.5, -1), glm::vec3(0,  1.8, -1), glm::vec3(1, 1.3, -1), glm::vec3(2, 0.4, -1) },
+	{ glm::vec3(-2, 0.2,  0), glm::vec3(-1, 1.6,  0), glm::vec3(0, -0.1,  0), glm::vec3(1, 1.1,  0), glm::vec3(2, 0.7,  0) },
+	{ glm::vec3(-2, 1.5,  1), glm::vec3(-1, 0.9,  1), glm::vec3(0,  1.2,  1), glm::vec3(1, 0.3,  1), glm::vec3(2, 0.1,  1) },
+	{ glm::vec3(-2, 0.7,  2), glm::vec3(-1, 1.0,  2), glm::vec3(0,  0.5,  2), glm::vec3(1, 1.7,  2), glm::vec3(2, 0.8,  2) }
+};
 
 class CurveEditorCallBack : public CallbackInterface {
 public:
@@ -217,6 +240,7 @@ public:
 		programOptions[0] = "Curve Editor";
 		programOptions[1] = "Orbit Viewer";
 		programOptions[2] = "Surface of Revolution";
+		programOptions[3] = "Tensor Product Surface";
 
 		// Initialize options for the point mode combo box
 		pointOptions[0] = "Select Mode";
@@ -275,10 +299,10 @@ public:
 			curveEditorPanelInput.pointMode = static_cast<POINT_MODE>(pointComboSelection);
 		}
 
-		// Checkbox
-		ImGui::Checkbox("Render Control Points", &curveEditorPanelInput.renderControlPoints);
+		if (curveEditorPanelInput.programMode != TENSOR) {
+			ImGui::Checkbox("Render Control Points", &curveEditorPanelInput.renderControlPoints);
+		}
 
-		// Checkbox
 		ImGui::Checkbox("Render Control Point Lines", &curveEditorPanelInput.renderControlPointLines);
 
 		if (curveEditorPanelInput.programMode == CURVE_EDITOR) {
@@ -287,9 +311,32 @@ public:
 				resetPoints = true;
 			}
 		}
-		else if (curveEditorPanelInput.programMode == SURFACE_OF_REVOLUTION) {
+
+		if ((curveEditorPanelInput.programMode == SURFACE_OF_REVOLUTION) || (curveEditorPanelInput.programMode == TENSOR)) {
 			// Checkbox
 			ImGui::Checkbox("Wireframe Mode", &curveEditorPanelInput.wireframeMode);
+
+			// Sliders for Surface of Revolution and Tensor Mode
+			if (curveEditorPanelInput.programMode == SURFACE_OF_REVOLUTION) {
+				ImGuiAddSpace();
+				ImGui::Text("Adjust Surface Parameters");
+				ImGui::SliderInt("Revolution Slices", &curveEditorPanelInput.sorSlices, 5, 30, "%d slices");
+				ImGui::SliderInt("B-Spline Iterations", &curveEditorPanelInput.sorIterations, 3, 10, "%d iterations");
+			}
+			else if (curveEditorPanelInput.programMode == TENSOR) {
+				ImGuiAddSpace();
+				ImGui::Text("Select Tensor Product Surface");
+				if (ImGui::Button("Default")) {
+					curveEditorPanelInput.tensorMode = 1;
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("My Tensor")) {
+					curveEditorPanelInput.tensorMode = 2;
+				}
+
+				ImGuiAddSpace();
+				ImGui::SliderInt("Tensor Iterations", &curveEditorPanelInput.tensorIterations, 1, 5, "%d iterations");
+			}
 		}
 
 		// Add spacing ------------------------------
@@ -319,7 +366,7 @@ private:
 
 	enum CURVE_TYPE curveType;
 
-	const char* programOptions[3]; // Options for the program combo box
+	const char* programOptions[4]; // Options for the program combo box
 	int programComboSelection;
 
 	const char* pointOptions[3]; // Options for the point combo box
@@ -402,10 +449,68 @@ std::vector<glm::vec3> surfaceOfRevolution(const std::vector<glm::vec3>& curvePo
 			surface_verts.push_back(v3);
 			surface_verts.push_back(v4);
 		}
-
 	}
 
 	return surface_verts;
+}
+
+/*------------------ Generate Tensor Product Surface -------------------*/
+std::vector<glm::vec3> tensorProductSurface(std::vector<std::vector<glm::vec3>>& controlPoints, int iterations = 3) {
+
+	// Smooth each row by applying chaikin algorithm
+	std::vector<std::vector<glm::vec3>> smoothedRows;
+	for (const std::vector<glm::vec3>& row : controlPoints) {
+		std::vector<glm::vec3> coarseRow = row;
+		smoothedRows.push_back(chaikinCurveSubdivision(coarseRow, iterations));
+	}
+
+	// Transpose smoothed grid
+	std::vector<std::vector<glm::vec3>> transposedGrid;
+	for (int i = 0; i < smoothedRows[0].size(); i++) {
+		std::vector<glm::vec3> column;
+		for (std::vector<glm::vec3>& row : smoothedRows) {
+			column.push_back(row[i]);
+		}
+		transposedGrid.push_back(column);
+	}
+
+	// Smooth each column (rows in transposed grid)
+	std::vector<std::vector<glm::vec3>> smoothedColumns;
+	for (const std::vector<glm::vec3>& column : transposedGrid) {
+		std::vector<glm::vec3> col = column;
+		smoothedColumns.push_back(chaikinCurveSubdivision(col, iterations));
+	}
+
+	// Transpose grid back to original layout
+	std::vector<std::vector<glm::vec3>> finalGrid;
+	for (int i = 0; i < smoothedColumns[0].size(); i++) {
+		std::vector<glm::vec3> row;
+		for (const auto& col : smoothedColumns) {
+			row.push_back(col[i]);
+		}
+		finalGrid.push_back(row);
+	}
+
+	// Generate triangles
+	std::vector<glm::vec3> surfacePoints;
+	for (int i = 0; i < finalGrid.size() - 1; i++) {
+		for (int j = 0; j < finalGrid[i].size() - 1; j++) {
+			glm::vec3 v1 = finalGrid[i][j];
+			glm::vec3 v2 = finalGrid[i + 1][j];
+			glm::vec3 v3 = finalGrid[i + 1][j + 1];
+			glm::vec3 v4 = finalGrid[i][j + 1];
+
+			surfacePoints.push_back(v1);
+			surfacePoints.push_back(v2);
+			surfacePoints.push_back(v3);
+
+			surfacePoints.push_back(v1);
+			surfacePoints.push_back(v3);
+			surfacePoints.push_back(v4);
+		}
+	}
+
+	return surfacePoints;
 }
 
 /*--------------------------- Extra Functions ---------------------------*/
@@ -480,6 +585,9 @@ int main() {
 	CPU_Geometry surface_cpu_geom;
 	GPU_Geometry surface_gpu_geom;
 
+	// Tensor geometry
+	CPU_Geometry tensor_cpu_geom;
+	GPU_Geometry tensor_gpu_geom;
 
 	while (!window.shouldClose()) {
 
@@ -534,6 +642,15 @@ int main() {
 		// Surface of revolution verts
 		std::vector<glm::vec3> surface_verts;
 
+		// Tensor Points
+		std::vector<std::vector<glm::vec3>> tensorPoints;
+		if (curveEditorPanelInput.tensorMode == 1) {
+			tensorPoints = tensorSurface1;
+		}
+		else {
+			tensorPoints = tensorSurface2;
+		}
+
 		/*----------------------------------------------------------- 3D View or 2D Point Editor-----------------------------------------------------------*/
 		switch (panelInput.programMode) {
 		case CURVE_EDITOR:
@@ -584,7 +701,7 @@ int main() {
 		case SURFACE_OF_REVOLUTION:
 			// Calculate surface points
 			surface_cpu_geom.verts.clear();
-			surface_cpu_geom.verts = surfaceOfRevolution(chaikinCurveSubdivision(cp_positions_vector, 1));
+			surface_cpu_geom.verts = surfaceOfRevolution(chaikinCurveSubdivision(cp_positions_vector, curveEditorPanelInput.sorIterations), curveEditorPanelInput.sorSlices);
 			surface_cpu_geom.cols = std::vector<glm::vec3>(surface_cpu_geom.verts.size(), glm::vec3(0.f, 0.f, 0.f));
 
 			// Render Surface
@@ -600,6 +717,25 @@ int main() {
 			}
 			surface_gpu_geom.bind();
 			glDrawArrays(GL_TRIANGLES, 0, surface_cpu_geom.verts.size());
+			break;
+		case TENSOR:
+			tensor_cpu_geom.verts.clear();
+			tensor_cpu_geom.verts = tensorProductSurface(tensorPoints, curveEditorPanelInput.tensorIterations);
+			tensor_cpu_geom.cols = std::vector<glm::vec3>(tensor_cpu_geom.verts.size(), glm::vec3(0.f, 0.f, 0.f));
+
+			tensor_gpu_geom.setVerts(tensor_cpu_geom.verts);
+			tensor_gpu_geom.setCols(tensor_cpu_geom.cols);
+
+			// Wireframe mode on/off
+			if (panelInput.wireframeMode) {
+				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			}
+			else {
+				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			}
+
+			tensor_gpu_geom.bind();
+			glDrawArrays(GL_TRIANGLES, 0, tensor_cpu_geom.verts.size());
 			break;
 		default:
 			// Calculate curve points
@@ -631,32 +767,67 @@ int main() {
 
 
 		/*------------------------------------------------------- Control Points and Control Point Lines -------------------------------------------------------*/
-		if (!cp_positions_vector.empty()) {
-			// Control Point ----------------
-			if (panelInput.renderControlPoints) { // Optional: render/unrender cp
-				cp_point_cpu.verts = cp_positions_vector;
-				cp_point_cpu.cols = std::vector<glm::vec3>(cp_point_cpu.verts.size(), cp_point_colour);
-				cp_point_gpu.setVerts(cp_point_cpu.verts);
-				cp_point_gpu.setCols(cp_point_cpu.cols);
+		switch (curveEditorPanelInput.programMode) {
+		case TENSOR:
+			// Tensor Product Surface Control Point Lines
+			if (panelInput.renderControlPointLines) {
+				cp_line_cpu.verts.clear();
+				cp_line_cpu.cols.clear();
 
-				cp_point_gpu.bind();
-				glPointSize(15.f);
-				glDrawArrays(GL_POINTS, 0, cp_point_cpu.verts.size());
-			}
+				// Draw Horizontal Lines (connect adjacent control points in each row)
+				for (int i = 0; i < tensorPoints.size(); i++) {
+					for (int j = 0; j < tensorPoints[i].size() - 1; j++) {
+						cp_line_cpu.verts.push_back(tensorPoints[i][j]);
+						cp_line_cpu.verts.push_back(tensorPoints[i][j + 1]);
+						cp_line_cpu.cols.push_back(cp_line_colour);
+						cp_line_cpu.cols.push_back(cp_line_colour);
+					}
+				}
 
-			// Control Point Line ------------
-			if (panelInput.renderControlPointLines) { // Optional: render/unrender cp lines
-				cp_line_cpu.verts = cp_positions_vector; // We are using GL_LINE_STRIP (change this if you want to use GL_LINES)
-				cp_line_cpu.cols = std::vector<glm::vec3>(cp_point_cpu.verts.size(), cp_line_colour);
+				// Draw Vertical Lines (connect adjacent control points in each column)
+				for (int j = 0; j < tensorPoints[0].size(); j++) {
+					for (int i = 0; i < tensorPoints.size() - 1; i++) {
+						cp_line_cpu.verts.push_back(tensorPoints[i][j]);
+						cp_line_cpu.verts.push_back(tensorPoints[i + 1][j]);
+						cp_line_cpu.cols.push_back(cp_line_colour);
+						cp_line_cpu.cols.push_back(cp_line_colour);
+					}
+				}
+
 				cp_line_gpu.setVerts(cp_line_cpu.verts);
 				cp_line_gpu.setCols(cp_line_cpu.cols);
-
 				cp_line_gpu.bind();
-				//glLineWidth(10.f); //May do nothing (like it does on my computer): https://community.khronos.org/t/3-0-wide-lines-deprecated/55426
-				glDrawArrays(GL_LINE_STRIP, 0, cp_line_cpu.verts.size());
+				glDrawArrays(GL_LINES, 0, cp_line_cpu.verts.size());
 			}
-		}
+			break;
+		default:
+			if (!cp_positions_vector.empty()) {
+				// Control Point ----------------
+				if (panelInput.renderControlPoints) { // Optional: render/unrender cp
+					cp_point_cpu.verts = cp_positions_vector;
+					cp_point_cpu.cols = std::vector<glm::vec3>(cp_point_cpu.verts.size(), cp_point_colour);
+					cp_point_gpu.setVerts(cp_point_cpu.verts);
+					cp_point_gpu.setCols(cp_point_cpu.cols);
 
+					cp_point_gpu.bind();
+					glPointSize(15.f);
+					glDrawArrays(GL_POINTS, 0, cp_point_cpu.verts.size());
+				}
+
+				// Control Point Line ------------
+				if (panelInput.renderControlPointLines) { // Optional: render/unrender cp lines
+					cp_line_cpu.verts = cp_positions_vector; // We are using GL_LINE_STRIP (change this if you want to use GL_LINES)
+					cp_line_cpu.cols = std::vector<glm::vec3>(cp_point_cpu.verts.size(), cp_line_colour);
+					cp_line_gpu.setVerts(cp_line_cpu.verts);
+					cp_line_gpu.setCols(cp_line_cpu.cols);
+
+					cp_line_gpu.bind();
+					//glLineWidth(10.f); //May do nothing (like it does on my computer): https://community.khronos.org/t/3-0-wide-lines-deprecated/55426
+					glDrawArrays(GL_LINE_STRIP, 0, cp_line_cpu.verts.size());
+				}
+			}
+			break;
+		}
 		//------------------------------------------
 		glDisable(GL_FRAMEBUFFER_SRGB); // disable sRGB for things like imgui
 		panel.render();
