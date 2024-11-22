@@ -23,7 +23,7 @@
 
 /*-------------------------------- Macros and Enums --------------------------------*/
 #define WINDOW_HEIGHT 1000
-#define WINDOW_WIDTH 1200
+#define WINDOW_WIDTH 1000
 
 #define POINT_PROXIMITY_THRESHOLD 0.08f
 
@@ -98,8 +98,7 @@ const std::vector<std::vector<glm::vec3>> tensorSurface2 = {
 	{ glm::vec3(-2, 0.3, -2), glm::vec3(-1, 1.2, -2), glm::vec3(0,  0.8, -2), glm::vec3(1, 0.1, -2), glm::vec3(2, 0.6, -2) },
 	{ glm::vec3(-2, 1.0, -1), glm::vec3(-1, 0.5, -1), glm::vec3(0,  1.8, -1), glm::vec3(1, 1.3, -1), glm::vec3(2, 0.4, -1) },
 	{ glm::vec3(-2, 0.2,  0), glm::vec3(-1, 1.6,  0), glm::vec3(0, -0.1,  0), glm::vec3(1, 1.1,  0), glm::vec3(2, 0.7,  0) },
-	{ glm::vec3(-2, 1.5,  1), glm::vec3(-1, 0.9,  1), glm::vec3(0,  1.2,  1), glm::vec3(1, 0.3,  1), glm::vec3(2, 0.1,  1) },
-	{ glm::vec3(-2, 0.7,  2), glm::vec3(-1, 1.0,  2), glm::vec3(0,  0.5,  2), glm::vec3(1, 1.7,  2), glm::vec3(2, 0.8,  2) }
+	{ glm::vec3(-2, 1.5,  1), glm::vec3(-1, 0.9,  1), glm::vec3(0,  1.2,  1), glm::vec3(1, 0.3,  1), glm::vec3(2, 0.1,  1) }
 };
 
 class CurveEditorCallBack : public CallbackInterface {
@@ -258,11 +257,6 @@ public:
 		ImGui::ColorEdit3("Select Background Color", colorValue); // RGB color selector
 		ImGui::Text("Selected Color: R: %.3f, G: %.3f, B: %.3f", colorValue[0], colorValue[1], colorValue[2]);
 
-		// Text input
-		// ImGui::InputText("Input Text", inputText, IM_ARRAYSIZE(inputText));
-		// Display the input text
-		// ImGui::Text("You entered: %s", inputText);
-
 		// Add spacing ------------------------------
 		ImGuiAddSpace();
 
@@ -299,10 +293,7 @@ public:
 			curveEditorPanelInput.pointMode = static_cast<POINT_MODE>(pointComboSelection);
 		}
 
-		if (curveEditorPanelInput.programMode != TENSOR) {
-			ImGui::Checkbox("Render Control Points", &curveEditorPanelInput.renderControlPoints);
-		}
-
+		ImGui::Checkbox("Render Control Points", &curveEditorPanelInput.renderControlPoints);
 		ImGui::Checkbox("Render Control Point Lines", &curveEditorPanelInput.renderControlPointLines);
 
 		if (curveEditorPanelInput.programMode == CURVE_EDITOR) {
@@ -343,8 +334,10 @@ public:
 		ImGuiAddSpace();
 
 		// Reset Camera
-		if (ImGui::Button("Reset Camera")) {
-			resetCamera = true;
+		if (curveEditorPanelInput.programMode != CURVE_EDITOR) {
+			if (ImGui::Button("Reset Camera")) {
+				resetCamera = true;
+			}
 		}
 	}
 
@@ -769,6 +762,26 @@ int main() {
 		/*------------------------------------------------------- Control Points and Control Point Lines -------------------------------------------------------*/
 		switch (curveEditorPanelInput.programMode) {
 		case TENSOR:
+			if (panelInput.renderControlPoints) {
+				cp_point_cpu.verts.clear();
+				cp_point_cpu.cols.clear();
+
+				for (auto& row : tensorPoints) {
+					for (auto& point : row) {
+						cp_point_cpu.verts.push_back(point);
+					}
+				}
+
+				cp_point_cpu.cols = std::vector<glm::vec3>(cp_point_cpu.verts.size(), cp_point_colour);
+				cp_point_gpu.setVerts(cp_point_cpu.verts);
+				cp_point_gpu.setCols(cp_point_cpu.cols);
+
+				cp_point_gpu.bind();
+				glPointSize(15.f);
+				glDrawArrays(GL_POINTS, 0, cp_point_cpu.verts.size());
+			}
+
+
 			// Tensor Product Surface Control Point Lines
 			if (panelInput.renderControlPointLines) {
 				cp_line_cpu.verts.clear();
